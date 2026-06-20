@@ -85,33 +85,17 @@ them in the conversation.
 
 ## Step 3: Run the optimization loop
 
-The method, whether automated or manual: split the eval set into roughly 60 percent train
-and 40 percent held-out test. Evaluate the current description by running each query
-several times (at least 3) to get a reliable trigger rate, with a pass threshold of 0.5.
-Propose an improved description based on what failed, re-evaluate on both splits, and
-iterate up to about 5 times. Select the best iteration by the held-out test score, not the
-train score, to avoid overfitting.
+Split the eval set into roughly 60 percent train and 40 percent held-out test. Evaluate the
+current description by running each query several times (at least 3) to get a reliable
+trigger rate, with a pass threshold of 0.5. Propose an improved description based on what
+failed, re-evaluate on both splits, and iterate up to about 5 times. Select the best
+iteration by the held-out test score, not the train score, to avoid overfitting.
 
-Automated path (requires a claude-style CLI and subagents; treat as a fast path where
-supported):
-
-```bash
-python -m scripts.run_loop \
-  --eval-set <path-to-trigger-eval.json> \
-  --skill-path <path-to-skill> \
-  --model <model-id-powering-this-session> \
-  --max-iterations 5 \
-  --verbose
-```
-
-Use the model ID powering the current session so the test matches what the user actually
-experiences. Tell the user it runs in the background and you will check on it. It returns
-JSON with `best_description`, selected by test score.
-
-Manual path (portable, any environment): do the same loop by hand. For each candidate
-description, run each eval query yourself a few times, record whether the skill would
-trigger, compute the trigger rate against the threshold on the train split, revise, then
-confirm on the held-out split. Keep the candidate with the best held-out result.
+Run the loop by hand: for each candidate description, run each eval query yourself a few
+times, record whether the skill would trigger, compute the trigger rate against the
+threshold on the train split, revise, then confirm on the held-out split. Keep the candidate
+with the best held-out result. Use the model that powers the current session for the runs so
+the test matches what the user actually experiences.
 
 ## Step 4: Apply the result
 

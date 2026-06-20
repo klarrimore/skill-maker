@@ -4,6 +4,25 @@ How to write a skill that an agent actually uses well. The hard frontmatter and 
 rules are in `spec-reference.md`; this file is about judgment: what to put in the body,
 how to phrase it, and what to leave out. Read it before writing the `SKILL.md` body.
 
+## Decide first: skill or always-on instruction
+
+Not everything should be a skill. Skills are model-invoked on a description match, and the
+model under-triggers them for behavior that should always be active. Decide the mechanism
+before drafting anything.
+
+- Make it a skill when the content is a discrete, task-class capability invoked by
+  recognizable contexts (analyze a filing, build a model, draft in a specific voice). It has
+  a "when," and that "when" is not "always."
+- Make it an always-on instruction (the client's always-on instruction file, for example
+  AGENTS.md or a client-specific equivalent) when the content is ambient discipline that
+  should govern all work regardless of task: coding standards, output formatting, tone,
+  "verify before claiming done." A skill carrying this fires inconsistently because there is
+  no discrete trigger.
+
+The tell: if the honest trigger description would be "use this on every task," it is not a
+skill. Recommend the always-on layer instead, and stop. Catch this at authoring time so
+miscategorized content never ships as a skill.
+
 ## Anatomy of a skill
 
 ```
@@ -126,8 +145,10 @@ These consolidate the standard's authoring guidance and the most common failure 
 - Design scripts for non-interactive use: accept input via flags, env, or stdin; document
   usage with `--help`; write helpful errors; emit structured output (JSON, CSV, TSV); send
   data to stdout and diagnostics to stderr; be idempotent; offer `--dry-run` for
-  destructive ops; use documented exit codes; pin dependency versions; keep output size
-  predictable.
+  destructive ops; use documented exit codes; declare dependencies inline so the script runs
+  with no separate install step (PEP 723 for Python, bundler/inline for Ruby, npm: imports
+  for Deno, pinned imports for Bun), preferring this over an external manifest, and pin
+  versions; keep output size predictable.
 - Validate with `skills-ref validate ./your-skill` (or the bundled validator) before
   distributing.
 - Test triggering with eval queries, run each several times, and use a train/validation
@@ -170,3 +191,10 @@ These consolidate the standard's authoring guidance and the most common failure 
   portability section of `spec-reference.md`.
 - Do not ship a skill whose real behavior would surprise a user who only read its
   description, and never ship malware or exploit code.
+- Do not give a skill a vague name (`helper`, `utils`, `tools`, `documents`, `data`). The name
+  is part of how the skill is recognized; make it specific.
+- Do not mix terms for one concept. Pick one term ("API endpoint" or "route" or "path", not all
+  three) and use it throughout; inconsistent terminology makes instructions ambiguous.
+- Do not reference another skill by name from inside a skill. The standard does not support
+  skill-to-skill composition; that is the agent's job. Cross-references also break when a
+  referenced skill is renamed, moved, or absent.

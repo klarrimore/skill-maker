@@ -6,9 +6,10 @@ This is the central place for repo-wide agent guidance. Read this after the plat
 
 - `SKILL.md` is the skill entry point and should stay lean.
 - `references/` holds deeper material that `SKILL.md` points to on demand.
-- `scripts/` contains the executable helpers for validation, packaging, eval, and report generation.
-- `agents/` contains reusable subagent instructions for eval work.
-- `.github/instructions/` contains path-specific Copilot instructions.
+- `scripts/` contains the executable helpers for validation and packaging.
+- `assets/` contains templates used in output (the review-view template).
+- `.agents/instructions/` contains canonical reusable instruction documents.
+- `.github/instructions/` contains lightweight forwarders for platform auto-discovery.
 - `.agents/` is the local home for reusable agent assets that should not live in the platform bootstrap files.
 
 ## Working rules
@@ -16,8 +17,16 @@ This is the central place for repo-wide agent guidance. Read this after the plat
 - Run Python commands from the repo root as modules.
 - Keep skill instructions portable: use the standard frontmatter fields only, and avoid client-specific extensions unless you are intentionally locking to one platform.
 - Prefer progressive disclosure. Put detail in `references/` and tell the agent exactly when to load it.
-- Keep `SKILL.md` short; move repeated logic into `scripts/` and reusable prompt material into `agents/` or `.agents/`.
-- Keep `.github/instructions/` focused on narrow, path-specific rules; keep broader guidance in `AGENTS.md`.
+- Keep `SKILL.md` short; move repeated logic into `scripts/` and reusable prompt material into `.agents/`.
+- Keep broader guidance in `AGENTS.md`; keep canonical reusable instruction content in `.agents/instructions/`.
+
+## Canonical instruction documents
+
+Agents that honor `AGENTS.md` should load and follow these files as needed:
+
+- `.agents/instructions/agent-safety.instructions.md` for agent/tool governance patterns.
+- `.agents/instructions/markdown-gfm.instructions.md` when editing Markdown.
+- `.agents/instructions/update-docs-on-code-change.instructions.md` when code changes require documentation updates.
 
 ## Common commands
 
@@ -27,21 +36,16 @@ python -m scripts.quick_validate /path/to/other-skill
 skills-ref validate .
 
 python -m scripts.package_skill . ./dist
-
-python -m scripts.run_eval --eval-set path/to/evals.json --skill-path . --runs-per-query 1
-python -m scripts.run_loop --eval-set path/to/evals.json --skill-path . --model <model-id>
-
-python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>
-python eval-viewer/generate_review.py <workspace>
-python eval-viewer/generate_review.py <workspace> --static <output.html>
 ```
 
 ## Eval workflow
 
 - Validate before packaging.
-- Use train/holdout splits in `run_loop.py`; choose the best description by test score, not train score.
-- `run_eval.py` and `run_loop.py` call `claude -p` and unset `CLAUDECODE` so they can run inside Claude Code sessions.
-- The HTML review view should come from `eval-viewer/generate_review.py`, not a hand-rolled page.
+- The evaluation and description-optimization loops are run by hand; the methodology lives in
+  `references/evaluation.md` and `references/description-optimization.md`.
+- Use train/holdout splits when tuning the description; choose the best description by the
+  held-out test score, not the train score.
+- Present test outputs to the user inline for review before critiquing them yourself.
 
 ## `.agents/`
 

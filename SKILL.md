@@ -2,10 +2,9 @@
 name: skill-maker
 description: Create new agent skills, modify and improve existing ones, and measure skill performance, following the open agentskills.io standard for cross-platform portability. Use this skill whenever the user wants to author a skill from scratch, turn a workflow or repeated task into a reusable skill, edit or refactor an existing skill, make a skill spec-compliant or portable, validate SKILL.md frontmatter, test or benchmark a skill, or optimize a skill description for better triggering, even if they do not say the word "skill" explicitly.
 license: Apache-2.0
-compatibility: Portable across any skills-compatible agent that reads the agentskills.io format. Bundled validation and packaging scripts require Python 3.8+ and PyYAML. The optional automated evaluation and description-optimization scripts additionally require subagent support and a claude-style CLI; the manual workflow they automate runs in any environment.
+compatibility: Portable across any skills-compatible agent that reads the agentskills.io format. Bundled validation and packaging scripts require Python 3.8+ and PyYAML.
 metadata:
   author: klarrimore
-  based-on: anthropics-skills-skill-creator
   standard: agentskills.io
   spec-revision: "2025-12-18"
   version: "1.1"
@@ -17,8 +16,7 @@ Create new skills and iteratively improve them, conforming to the open Agent Ski
 standard (agentskills.io). A skill is a folder containing a `SKILL.md` file (YAML
 frontmatter plus Markdown instructions) and optional bundled `scripts/`, `references/`,
 and `assets/`. The whole point of the standard is portability: a skill built to the
-core format runs unchanged across the ~40 skills-compatible agents (Claude, Claude Code,
-Codex, Gemini CLI, Copilot, Cursor, VS Code, and more). Stay on the core format and
+core format runs unchanged across every skills-compatible agent. Stay on the core format and
 the skill stays portable; reach for a client-specific frontmatter field and it does not.
 
 ## The core loop
@@ -56,7 +54,9 @@ confused user costs more.
 The current conversation may already contain the workflow to capture (the user says
 "turn this into a skill"). If so, mine the history first: the tools used, the sequence
 of steps, corrections the user made, the input and output formats observed. Then confirm
-the gaps before moving on. Pin down four things:
+the gaps before moving on. Before anything else, confirm this should be a skill at all and
+not an always-on instruction; see the "Decide first" section in references/authoring-guide.md.
+Pin down four things:
 
 1. What should this skill let the agent do?
 2. When should it trigger? (which user phrases and contexts)
@@ -125,7 +125,7 @@ are in progress.
 
 Run the test prompts, get the outputs in front of the user fast, gather feedback, then
 rewrite. The full evaluation workflow (running with-skill and baseline runs, drafting
-assertions, grading, aggregating a benchmark, launching the review viewer, reading
+assertions, grading by hand, aggregating a benchmark, building the review view, reading
 feedback, and the improvement heuristics) lives in **`references/evaluation.md`**. The
 short version of how to improve: generalize from feedback rather than overfitting to the
 test prompts, keep the prompt lean by cutting instructions the transcripts show the agent
@@ -138,9 +138,8 @@ The description determines triggering, so after the skill works, tune it. The fu
 eval-driven method (build ~20 trigger queries split should-trigger / should-not-trigger
 with an emphasis on near-misses, run each several times for a trigger rate, use a
 train/validation split to avoid overfitting, iterate) lives in
-**`references/description-optimization.md`**. Optional automation is in
-`scripts/run_loop.py`; it requires a claude-style CLI, so treat it as a fast path where
-supported and the manual method as the portable default.
+**`references/description-optimization.md`**. Run it by hand; the method is the portable
+default and needs no special tooling.
 
 ### Step 7: Validate against the spec
 
@@ -166,11 +165,11 @@ Fix anything it flags before distributing.
 A skill is just a folder, and the folder is the unit of distribution. Place it where the
 target agent looks. For cross-client portability the emerging convention is
 `.agents/skills/<name>/` (project scope) or `~/.agents/skills/<name>/` (user scope);
-many clients also read their own native path (for example `.claude/skills/`). Project
-scope overrides user scope on a name collision. Source control the folder; that is the
-versioning story.
+many clients also read their own native path (a client-specific `.<client>/skills/`
+directory). Project scope overrides user scope on a name collision. Source control the
+folder; that is the versioning story.
 
-Some hosts (claude.ai, the Skills API) additionally accept a zipped `.skill` upload. If
+Some hosts (a hosted skills app or a skills API) additionally accept a zipped `.skill` upload. If
 the `present_files` tool is available and the user wants a downloadable artifact, package
 it:
 
@@ -187,9 +186,9 @@ is the folder.
 ## Environment adaptations
 
 The loop above is the same everywhere, but the mechanics shift with what your runtime can
-do (subagents or not, a display or not, a model CLI or not, a packaging tool or not).
+do (subagents or not, a display or not, an agent CLI or not, a packaging tool or not).
 Rather than special-casing product names, adapt by capability. The full matrix (no
-subagents, no display, headless/static viewer output, packaging, updating an installed
+subagents, no display, headless presentation, packaging, updating an installed
 skill in a read-only path) is in **`references/environment-adaptations.md`**. Read it when
 your environment lacks one of those capabilities.
 
@@ -229,16 +228,9 @@ References:
 Scripts (run as modules from the skill root, e.g. `python -m scripts.quick_validate`):
 - `scripts/quick_validate.py` - zero-network spec validator (fallback for `skills-ref validate`).
 - `scripts/package_skill.py` - validate then zip into a `.skill` for hosts that accept uploads.
-- `scripts/run_eval.py`, `scripts/run_loop.py`, `scripts/aggregate_benchmark.py`, `scripts/improve_description.py`, `scripts/generate_report.py`, `scripts/utils.py` - optional evaluation and description-optimization automation (require a claude-style CLI and subagents).
 
-Agents (subagent instructions; read when spawning one):
-- `agents/grader.md` - evaluate assertions against an output.
-- `agents/comparator.md` - blind A/B comparison of two outputs.
-- `agents/analyzer.md` - analyze why one version beat another.
-
-Other:
-- `eval-viewer/generate_review.py` - build the human review view (use this, do not hand-roll HTML).
-- `assets/eval_review.html` - template for the trigger-eval review step.
+Assets:
+- `assets/eval_review.html` - template for the human review view; fill the placeholder by hand.
 
 ---
 

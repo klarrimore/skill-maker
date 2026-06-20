@@ -19,21 +19,21 @@ environment is missing and apply the matching adaptation.
 
 ## No display (headless VM or remote server, no browser)
 
-- Skip the browser review view. Present results directly in the conversation: for each
-  case, show the prompt and the output. If an output is a file the user must see (a
-  `.docx`, an `.xlsx`), save it to the filesystem and tell them where so they can download
-  and inspect it. Ask for feedback inline ("How does this look? Anything you would
-  change?").
-- If you still want the structured viewer, generate it as a standalone file with
-  `eval-viewer/generate_review.py --static <output_path>` and hand the user a link to open
-  in their own browser. Feedback downloads as a `feedback.json` file when they submit;
-  copy it into the workspace so the next iteration can read it.
+- Present results directly in the conversation: for each case, show the prompt and the
+  output. If an output is a file the user must see (a `.docx`, an `.xlsx`), save it to the
+  filesystem and tell them where so they can download and inspect it. Ask for feedback inline
+  ("How does this look? Anything you would change?").
+- For the description-optimization trigger eval, the `assets/eval_review.html` template still
+  works without a display: fill its placeholders, write it to a file, and hand the user a
+  link to open in their own browser, or present the queries inline and edit them in the
+  conversation.
 
-## No model CLI (no claude-style command-line agent)
+## No agent CLI (no non-interactive command-line agent runner)
 
-- The automated description-optimization loop (`scripts/run_loop.py`, `scripts/run_eval.py`)
-  calls a model CLI via subprocess. Without it, use the manual optimization path in
-  `description-optimization.md`; it produces the same result by hand.
+- Nothing in the bundled flow requires one. The validation and packaging scripts need only
+  Python and a filesystem, and both the evaluation loop (`evaluation.md`) and the
+  description-optimization loop (`description-optimization.md`) are run by hand, so they work
+  the same whether or not your environment can invoke an agent non-interactively.
 
 ## Packaging
 

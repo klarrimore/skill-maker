@@ -69,6 +69,10 @@ metadata:
 - Must not start or end with a hyphen.
 - Must not contain consecutive hyphens (`--`).
 - Must match the parent directory name.
+- Some clients reserve certain words (often their own product or vendor name) in skill names
+  and reject a name that contains one on upload. The standard does not define a reserved-word
+  list, so check the constraints of the client you are targeting. As a portable default, avoid
+  vendor or brand names in skill names entirely.
 
 Valid: `pdf-processing`, `data-analysis`, `code-review`.
 Invalid: `PDF-Processing` (uppercase), `-pdf` (leading hyphen), `pdf--processing` (double
@@ -81,6 +85,10 @@ hyphen).
 - Include specific keywords that help an agent recognize relevant tasks.
 - The bundled validator also rejects angle brackets (`<`, `>`) for safety against markup
   injection into the system prompt; avoid them.
+- Stay clear of the 1024 ceiling. A description within about 5% of the limit (roughly 973+
+  characters) is a maintenance trap: the next trigger-phrase addition silently breaches it.
+  Re-check the length after every edit, not just at first authoring. An edit that grows the
+  description is the most common way a previously compliant skill goes over.
 
 Good: "Extracts text and tables from PDF files, fills PDF forms, and merges multiple PDFs.
 Use when working with PDF documents or when the user mentions PDFs, forms, or document
@@ -91,7 +99,7 @@ extraction." Poor: "Helps with PDFs."
 - 1 to 500 characters if present.
 - Include only when there are real environment requirements.
 
-Examples: "Designed for Claude Code (or similar products)"; "Requires git, docker, jq, and
+Examples: "Requires a non-interactive shell and network access"; "Requires git, docker, jq, and
 access to the internet"; "Requires Python 3.14+ and uv".
 
 ## Body content
@@ -131,11 +139,11 @@ agents.
 A skill becomes platform-locked when it relies on client-specific extensions. Known
 examples to avoid if you want portability:
 
-- `context: fork` (Claude Code, VS Code): runs the skill in a forked subagent context.
-- `user-invocable`, `model`, `disable-model-invocation` (Claude Code): invocation
-  controls not recognized elsewhere.
-- An `agents/openai.yaml` policy file (Codex): for example `allow_implicit_invocation:
-  false`, ignored by other clients.
+- `context: fork`: runs the skill in a forked subagent context; recognized by some clients only.
+- `user-invocable`, `model`, `disable-model-invocation`: invocation controls some clients
+  honor and others do not recognize.
+- An `agents/openai.yaml` policy file (for example `allow_implicit_invocation: false`):
+  honored by one client, ignored by the rest.
 - Heavy reliance on `allowed-tools` enforcement, which is experimental and varies by
   agent.
 
@@ -143,6 +151,26 @@ Rule of thumb: if you need cross-agent compatibility, stick to `name`, `descript
 the Markdown body, and put any environment dependency in `compatibility` rather than in a
 nonstandard field. Note any deliberate platform-lock in `compatibility` so users are not
 surprised.
+
+## Portability operations
+
+The `SKILL.md` format is identical across skills-compatible clients. What differs is runtime,
+distribution, and where files live. Keep a skill portable by assuming the least-capable runtime
+and avoiding client-specific machinery.
+
+- Runtime varies. Some agent runtimes have no network access and cannot install packages at run
+  time. Do not assume either is available. Prefer inline dependency declarations for scripts
+  (see authoring-guide.md) and have scripts degrade gracefully when a capability is absent.
+- The folder is the portable unit of distribution. Plugin and marketplace packaging formats are
+  client-specific and mutually incompatible. To reach more than one client, ship the skill as a
+  folder, or a symlink into the cross-client `.agents/skills/` location, not as a plugin.
+- Always-on instruction files are client-specific. If the better mechanism is an always-on
+  instruction rather than a skill, note that its file format is not portable the way `SKILL.md`
+  is; `AGENTS.md` is the cross-tool convention, and some clients read their own equivalent
+  instead. A skill is portable to every skills-compatible client; an always-on file is not.
+- Any frontmatter field outside the six in the schema above is client-specific and breaks
+  portability, as are client-specific sidecar files. Avoid them unless you intend single-client
+  behavior, and if you use one, state it in `compatibility`.
 
 ## Directory placement (convention, not spec)
 
@@ -156,7 +184,8 @@ emerging cross-client convention:
 | User | `~/.<client>/skills/` | The client's native location |
 | User | `~/.agents/skills/` | Cross-client interoperability |
 
-Many clients also read `.claude/skills/` for pragmatic compatibility. On a name collision,
+Many clients also read one or more shared compatibility paths in addition to their own native
+location. On a name collision,
 project-level skills override user-level skills.
 
 ## Validation and distribution
@@ -165,8 +194,8 @@ project-level skills override user-level skills.
   library, also on PyPI; exposes `validate`, `read-properties`, and `to-prompt`).
 - The folder is the unit of distribution; source-control it. Ecosystem tools operate on
   folders or repos (for example `gh skill`, `npx skills add <owner/repo>`).
-- A zipped `.skill` upload is a host convenience (claude.ai, the Skills API), not part of
-  the open standard.
+- A zipped `.skill` upload is a host convenience offered by some hosts (a hosted skills app
+  or a skills API), not part of the open standard.
 
 ## Security posture
 

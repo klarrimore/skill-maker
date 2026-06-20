@@ -45,10 +45,10 @@ def validate_skill(skill_path):
         return False, "SKILL.md not found"
 
     # A skill must contain exactly one SKILL.md, at <folder>/SKILL.md. Extra
-    # (nested) SKILL.md files are rejected on upload: the Skills API and claude.ai
-    # accept exactly one per skill - only Claude Code's filesystem loads nested
-    # ones. package_skill produces an upload-bound .skill, so block here rather
-    # than ship an artifact that's guaranteed to fail on upload.
+    # (nested) SKILL.md files are rejected on upload: hosts that accept a .skill
+    # upload accept exactly one per skill - only a filesystem-based client loads
+    # nested ones. package_skill produces an upload-bound .skill, so block here
+    # rather than ship an artifact that's guaranteed to fail on upload.
     skill_md_files = [
         p for p in skill_path.rglob('SKILL.md')
         if _counts_as_skill_md(p.relative_to(skill_path))
@@ -60,8 +60,8 @@ def validate_skill(skill_path):
         )
         return False, (
             f"Found {len(skill_md_files)} SKILL.md files, but a skill must contain "
-            f"exactly one at <folder>/SKILL.md. The Skills API and claude.ai reject "
-            f"multiple on upload (only Claude Code's filesystem loads nested skills). "
+            f"exactly one at <folder>/SKILL.md. Hosts that accept a .skill upload reject "
+            f"multiple on upload (only a filesystem-based client loads nested skills). "
             f"Extra: {', '.join(extras)}.\n"
             "  - Separate skills: package each on its own, or build a plugin "
             "(skills/<name>/SKILL.md).\n"
@@ -183,6 +183,19 @@ def body_warnings(skill_path):
             f"SKILL.md body is roughly {approx_tokens} tokens (recommended under "
             f"{BODY_TOKEN_BUDGET}). Move detail into references/ and point to it."
         )
+    # Description ceiling advisory: within 5% of the 1024 limit is a maintenance trap.
+    fm_match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
+    if fm_match:
+        try:
+            fm = yaml.safe_load(fm_match.group(1)) or {}
+            desc = (fm.get('description') or '').strip()
+            if 973 <= len(desc) <= 1024:
+                warnings.append(
+                    f"Description is {len(desc)} characters, within 5% of the 1024 limit. "
+                    f"The next trigger-phrase edit will breach it; trim now."
+                )
+        except yaml.YAMLError:
+            pass
     return warnings
 
 

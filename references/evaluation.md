@@ -74,58 +74,33 @@ else. Process each notification as it arrives rather than batching.
 
 ## Step 4: Grade, aggregate, review
 
-1. Grade each run. Read `agents/grader.md` and evaluate each assertion against the
-   outputs; save `grading.json` in each run directory. The `grading.json` expectations
-   array must use the fields `text`, `passed`, and `evidence` exactly; the viewer depends
-   on those names. For assertions checkable programmatically, write and run a script
-   instead of eyeballing.
-2. Aggregate into a benchmark from the skill root:
-   ```bash
-   python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>
-   ```
-   This produces `benchmark.json` and `benchmark.md` with pass rate, time, and tokens per
-   configuration (mean and stddev) plus the delta. Place each with_skill entry before its
-   baseline counterpart. If generating `benchmark.json` by hand, follow `schemas.md`
-   exactly; the viewer reads those field names literally.
+1. Grade each run by hand. Evaluate each assertion against the outputs and save
+   `grading.json` in each run directory. Grade strictly against the assertion text, cite the
+   specific evidence in the output that makes each pass or fail, and do not give credit for
+   near-misses or intentions. The `grading.json` expectations array must use the fields
+   `text`, `passed`, and `evidence` exactly. For assertions checkable programmatically, write
+   and run a script instead of eyeballing.
+2. Aggregate into a benchmark. Build `benchmark.json` (and a readable `benchmark.md` summary)
+   by hand following `schemas.md` exactly. Report pass rate, time, and tokens per
+   configuration (mean and stddev) plus the with-skill-minus-baseline delta. Place each
+   with_skill entry before its baseline counterpart.
 3. Do an analyst pass. Read the benchmark and surface what the aggregates hide:
-   non-discriminating assertions (pass regardless of skill), high-variance evals (possibly
-   flaky), and time/token tradeoffs. See the "Analyzing Benchmark Results" section of
-   `agents/analyzer.md`.
-4. Launch the review view with `eval-viewer/generate_review.py` (do not hand-roll HTML):
-   ```bash
-   nohup python <skill-path>/eval-viewer/generate_review.py \
-     <workspace>/iteration-N \
-     --skill-name "<name>" \
-     --benchmark <workspace>/iteration-N/benchmark.json \
-     > /dev/null 2>&1 &
-   VIEWER_PID=$!
-   ```
-   For iteration 2 and later, also pass `--previous-workspace <workspace>/iteration-<N-1>`.
-   In a headless environment, use `--static <output_path>` to write a standalone HTML file
-   and hand the user a link instead of starting a server.
-5. Tell the user where to look: the "Outputs" tab to click through each case and leave
-   feedback, the "Benchmark" tab for the quantitative comparison, then "Submit All Reviews"
-   when done.
-
-Generate the review view before you start critiquing outputs yourself. Get the examples in
-front of the human first.
+   non-discriminating assertions (pass regardless of skill, so they tell you nothing),
+   high-variance evals (possibly flaky, rerun before trusting), and time/token tradeoffs
+   (a small quality gain that doubles cost may not be worth it).
+4. Present the outputs to the user for review before you critique them yourself. Show each
+   case in the conversation: the prompt, the with-skill output, and the baseline output side
+   by side, plus the per-case pass rates from the benchmark. If an output is a file the user
+   must open (a `.docx`, an `.xlsx`, a chart), save it to the workspace and tell them the
+   path. Ask for feedback inline ("How does each look? Anything you would change?").
+5. Get the examples in front of the human first; do not start rewriting from your own
+   read of the outputs before the user has weighed in.
 
 ## Step 5: Read the feedback
 
-When the user is done, read `feedback.json`:
-
-```json
-{
-  "reviews": [
-    {"run_id": "eval-0-with_skill", "feedback": "the chart is missing axis labels"},
-    {"run_id": "eval-1-with_skill", "feedback": ""}
-  ],
-  "status": "complete"
-}
-```
-
-Empty feedback means it was fine. Focus on the cases with specific complaints. Kill the
-viewer server when done: `kill $VIEWER_PID 2>/dev/null`.
+Gather feedback inline as the user responds, one case at a time. Empty or "looks fine"
+responses mean that case is good; focus on the cases with specific complaints, and restate
+each complaint as the underlying problem before you act on it.
 
 ## Improving the skill
 
@@ -154,7 +129,7 @@ improve it.
 2. Rerun all test cases into `iteration-<N+1>/`, including baselines. For a new skill the
    baseline stays `without_skill`. For an existing skill, use judgment: the original the
    user arrived with, or the previous iteration.
-3. Launch the viewer with `--previous-workspace` pointing at the prior iteration.
+3. Present the new outputs against the prior iteration's so the user can see what changed.
 4. Wait for review, read the new feedback, improve again.
 
 Stop when the user is happy, the feedback is all empty, or you are no longer making
@@ -162,7 +137,8 @@ meaningful progress.
 
 ## Advanced: blind comparison (optional, needs subagents)
 
-For a rigorous "is the new version actually better?" check, give two outputs to an
-independent agent without telling it which is which and let it judge, then analyze why the
-winner won. Read `agents/comparator.md` and `agents/analyzer.md`. Most skills do not need
-this; the human review loop is usually enough.
+For a rigorous "is the new version actually better?" check, give two outputs to a separate
+agent instance without telling it which is which, let it judge against the assertions, then
+analyze why the winner won. Randomize which output is presented first so position does not
+bias the judgment, and have the judge cite specific evidence. Most skills do not need this;
+the human review loop is usually enough.

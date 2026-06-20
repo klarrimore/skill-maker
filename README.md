@@ -19,7 +19,6 @@ python -m scripts.package_skill . ./dist
 
 - Python 3.8+
 - PyYAML
-- `claude` CLI for `run_eval.py`, `run_loop.py`, and description-improvement flows
 
 ## Layout
 
@@ -29,7 +28,6 @@ skill-maker/
   AGENTS.md           Central repo-wide agent guidance
   CLAUDE.md           Claude Code bootstrap
   .github/copilot-instructions.md  Copilot bootstrap
-  .github/instructions/  Path-specific Copilot instructions
   references/         Loaded on demand
     spec-reference.md           Exact frontmatter schema, naming, structure, portability
     authoring-guide.md          Anatomy, writing patterns, full do's and don'ts
@@ -37,15 +35,14 @@ skill-maker/
     description-optimization.md Eval-driven triggering method
     environment-adaptations.md  Capability-based adaptations (no subagents/display/CLI)
     schemas.md                  JSON schemas for evals/grading/benchmark
+  .agents/            Local reusable agent assets
+    instructions/               Canonical reusable instruction documents
+  .github/instructions/  Forwarders for Copilot auto-discovery
   scripts/            Run as modules from the skill root
     quick_validate.py   Zero-network spec validator (fallback for `skills-ref validate`)
     package_skill.py    Validate then zip into a .skill for hosts that accept uploads
-    run_eval.py run_loop.py aggregate_benchmark.py improve_description.py
-    generate_report.py utils.py   Eval/optimization automation
-  agents/             Subagent instructions (grader, comparator, analyzer)
-  .agents/            Local reusable agent assets
-  eval-viewer/        Human review view generator
-  assets/             Templates
+    utils.py            Shared SKILL.md parsing helper
+  assets/             Templates (the review-view template)
   LICENSE.txt         Apache-2.0
 ```
 
@@ -61,26 +58,16 @@ python -m scripts.quick_validate /path/to/other-skill
 
 # Package a skill after validation
 python -m scripts.package_skill . ./dist
-
-# Run trigger evaluation
-python -m scripts.run_eval --eval-set path/to/evals.json --skill-path . --runs-per-query 1
-
-# Run the eval/improve loop
-python -m scripts.run_loop --eval-set path/to/evals.json --skill-path . --model <model-id>
-
-# Aggregate benchmark results
-python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>
-
-# Generate the review viewer
-python eval-viewer/generate_review.py <workspace>
-python eval-viewer/generate_review.py <workspace> --static <output.html>
 ```
+
+The evaluation and description-optimization loops are run by hand; see
+`references/evaluation.md` and `references/description-optimization.md`.
 
 ## Agent guidance
 
-For repo-wide agent instructions, read `AGENTS.md`. It is the central location for
-instructions that do not need to stay in the platform bootstrap files. Path-specific
-Copilot instructions live under `.github/instructions/`.
+For repo-wide agent instructions, read `AGENTS.md`. Canonical reusable instruction
+documents live under `.agents/instructions/`. `.github/instructions/` contains
+forwarders for Copilot auto-discovery.
 
 ## Use
 
