@@ -1,12 +1,14 @@
 ---
 name: acreadiness-policy
-description: 'Help the user pick, write, or apply an AgentRC policy. Policies customise readiness scoring by disabling irrelevant checks, overriding impact/level, setting pass-rate thresholds, or chaining org baselines with team overrides. Use when the user asks about strict mode, AI-only scoring, custom weights, CI gating, or wants org-wide standardisation.'
-argument-hint: "[show | new <name> | apply <path-or-pkg>] — e.g. /acreadiness-policy show, /acreadiness-policy new strict-frontend"
+description: 'Help the user pick, write, or apply an AgentRC readiness policy. Policies customise readiness scoring by disabling irrelevant checks, overriding impact/level, setting pass-rate thresholds, or chaining org baselines with team overrides. Use when the user asks about strict mode, AI-only scoring, custom weights, CI gating, or wants org-wide standardisation of AgentRC readiness.'
+license: Apache-2.0
+metadata:
+  standard: agentskills.io
 ---
 
-# /acreadiness-policy — AgentRC policies
+# AgentRC readiness policies
 
-Use this skill when the user asks about **policies**, **strict mode**, **custom scoring**, **disabling checks**, **org standards**, or **CI gating** of readiness.
+Use this skill when the user asks about **policies**, **strict mode**, **custom scoring**, **disabling checks**, **org standards**, or **CI gating** of AgentRC readiness.
 
 A policy is a small JSON file with three optional sections — `criteria`, `extras`, `thresholds` — that customise how AgentRC scores readiness.
 
@@ -55,13 +57,18 @@ Recommend these as starting points before writing a custom policy.
 
 `Score = 1 − (deductions / max possible weight)`. Grades: **A** ≥ 0.9, **B** ≥ 0.8, **C** ≥ 0.7, **D** ≥ 0.6, **F** < 0.6.
 
-## Sub-commands
+## What the user wants to do
 
-### `show`
-List policies currently in effect (from `agentrc.config.json` `policies` array, or none).
+A request maps to one of three operations. Read the user's intent — there is no fixed command syntax to wait for.
 
-### `new <name>`
+### See the policies in effect
+
+List the policies currently active (from the `policies` array in `agentrc.config.json`, or report that none are configured).
+
+### Create a new policy
+
 Scaffold `policies/<name>.json` with sensible defaults. Walk the user through:
+
 1. **What to disable** — irrelevant pillars or extras for their stack (e.g. disable `observability` for a static site).
 2. **What to raise** — override `impact` to `high` or `critical` for must-haves (e.g. `readme`, `codeowners`).
 3. **Pass-rate threshold** — typical org baselines: `0.7` (lenient), `0.85` (standard), `1.0` (strict).
@@ -70,8 +77,10 @@ Scaffold `policies/<name>.json` with sensible defaults. Walk the user through:
    { "policies": ["./policies/<name>.json"] }
    ```
 
-### `apply <path-or-pkg>`
+### Apply or run a policy
+
 Run `agentrc readiness --json --policy <source>` and re-render the report by handing off to the `assess` skill / `ai-readiness-reporter` agent. Supports chaining:
+
 ```bash
 npx -y github:microsoft/agentrc readiness --json --policy ./org-baseline.json,./team-frontend.json
 ```
