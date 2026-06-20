@@ -1,17 +1,17 @@
 ---
-name: skill-creator
+name: skill-maker
 description: Create new agent skills, modify and improve existing ones, and measure skill performance, following the open agentskills.io standard for cross-platform portability. Use this skill whenever the user wants to author a skill from scratch, turn a workflow or repeated task into a reusable skill, edit or refactor an existing skill, make a skill spec-compliant or portable, validate SKILL.md frontmatter, test or benchmark a skill, or optimize a skill description for better triggering, even if they do not say the word "skill" explicitly.
 license: Apache-2.0
 compatibility: Portable across any skills-compatible agent that reads the agentskills.io format. Bundled validation and packaging scripts require Python 3.8+ and PyYAML. The optional automated evaluation and description-optimization scripts additionally require subagent support and a claude-style CLI; the manual workflow they automate runs in any environment.
 metadata:
-  author: agentic-systems
+  author: klarrimore
   based-on: anthropics-skills-skill-creator
   standard: agentskills.io
   spec-revision: "2025-12-18"
   version: "1.1"
 ---
 
-# Skill Creator
+# Skill Maker
 
 Create new skills and iteratively improve them, conforming to the open Agent Skills
 standard (agentskills.io). A skill is a folder containing a `SKILL.md` file (YAML
@@ -148,7 +148,7 @@ Before handing the skill back, validate it. The canonical validator from the sta
 the reference library:
 
 ```bash
-skills-ref validate ./skill-creator
+skills-ref validate ./skill-maker
 ```
 
 If `skills-ref` is not installed, use the bundled zero-network validator, which checks
@@ -156,7 +156,7 @@ the same spec constraints (frontmatter fields, the 64/1024/500 character limits,
 naming, name-matches-directory) plus soft warnings on body length:
 
 ```bash
-python -m scripts.quick_validate ./skill-creator
+python -m scripts.quick_validate ./skill-maker
 ```
 
 Fix anything it flags before distributing.
@@ -175,7 +175,7 @@ the `present_files` tool is available and the user wants a downloadable artifact
 it:
 
 ```bash
-python -m scripts.package_skill ./skill-creator ./dist
+python -m scripts.package_skill ./skill-maker ./dist
 ```
 
 This validates first, then writes `<name>.skill`. Hand the user the resulting path. The
