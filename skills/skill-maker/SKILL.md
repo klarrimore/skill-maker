@@ -51,11 +51,14 @@ confused user costs more.
 
 ### Step 1: Capture intent
 
+Before anything else, confirm this should be a skill at all and
+not an always-on instruction; see the "Decide first" section in references/authoring-guide.md.
+
 The current conversation may already contain the workflow to capture (the user says
 "turn this into a skill"). If so, mine the history first: the tools used, the sequence
 of steps, corrections the user made, the input and output formats observed. Then confirm
-the gaps before moving on. Before anything else, confirm this should be a skill at all and
-not an always-on instruction; see the "Decide first" section in references/authoring-guide.md.
+the gaps before moving on.
+
 Pin down four things:
 
 1. What should this skill let the agent do?
@@ -170,7 +173,7 @@ directory). Project scope overrides user scope on a name collision. Source contr
 folder; that is the versioning story.
 
 Some hosts (a hosted skills app or a skills API) additionally accept a zipped `.skill` upload. If
-the `present_files` tool is available and the user wants a downloadable artifact, package
+your client can surface a file to the user and they want a downloadable artifact, package
 it:
 
 ```bash
