@@ -11,10 +11,10 @@ This repo is a workspace. The deliverable skill is self-contained under `skills/
   - `skills/skill-maker/references/` holds deeper material that `SKILL.md` points to on demand.
   - `skills/skill-maker/scripts/` contains the executable helpers for validation and packaging.
   - `skills/skill-maker/assets/` contains templates used in output (the review-view template).
-- `.agents/skills/` holds build-tooling skills used to develop this repo; `.agents/skills/skill-maker` is a symlink to `skills/skill-maker/` so the deliverable is discoverable as a skill.
 - `.agents/instructions/` contains canonical reusable instruction documents.
 - `.github/instructions/` contains lightweight forwarders for platform auto-discovery.
 - `.agents/` is the local home for reusable agent assets that should not live in the platform bootstrap files.
+  Skills used across repositories live in the user-global `~/.agent/skills/` directory, not in this repo.
 
 ## Working rules
 
@@ -62,6 +62,5 @@ Use `.agents/` for local reusable agent assets:
 
 - `.agents/agents/` for prompt fragments or agent-specific instructions
 - `.agents/commands/` for reusable command templates or task wrappers
-- `.agents/skills/` for build-tooling skills used to develop this repo (plus the `skill-maker` symlink to the deliverable)
 
-Keep files there small, focused, and cross-client friendly.
+Keep files there small, focused, and cross-client friendly. Do not add project-local skill copies here; install reusable skills under `~/.agent/skills/`.

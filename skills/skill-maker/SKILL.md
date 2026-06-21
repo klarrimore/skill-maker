@@ -166,11 +166,12 @@ Fix anything it flags before distributing.
 ### Step 8: Distribute
 
 A skill is just a folder, and the folder is the unit of distribution. Place it where the
-target agent looks. For cross-client portability the emerging convention is
-`.agents/skills/<name>/` (project scope) or `~/.agents/skills/<name>/` (user scope);
-many clients also read their own native path (a client-specific `.<client>/skills/`
-directory). Project scope overrides user scope on a name collision. Source control the
-folder; that is the versioning story.
+target agent looks. In this workspace, reusable skills live under
+`~/.agent/skills/<name>/` for user-global installs. For cross-client portability, many
+clients also read `.agents/skills/<name>/` (project scope), `~/.agents/skills/<name>/`
+(user scope), or a client-specific `.<client>/skills/` directory. Project scope
+overrides user scope on a name collision. Source control the folder when it is meant to
+travel with a project; otherwise keep reusable personal skills in the user-global path.
 
 Some hosts (a hosted skills app or a skills API) additionally accept a zipped `.skill` upload. If
 your client can surface a file to the user and they want a downloadable artifact, package

@@ -249,7 +249,7 @@ Skill (directory)
 
 | Artifact | Format | Location |
 |----------|--------|----------|
-| Skill folder | Directory tree | `.agents/skills/<name>/` or user-scoped |
+| Skill folder | Directory tree | `~/.agent/skills/<name>/` or another client skills directory |
 | `.skill` package | ZIP (deflated) | `./dist/<name>.skill` |
 | Eval set | JSON | `evals/evals.json` within skill |
 | Eval review | HTML | Generated from `assets/eval_review.html` |
@@ -373,8 +373,7 @@ Skills distribute as directories placed in conventional paths:
 
 | Scope | Path | Override |
 |-------|------|----------|
-| Project | `.agents/skills/<name>/` | Wins on name collision |
-| User | `~/.agents/skills/<name>/` | Fallback |
+| User-global | `~/.agent/skills/<name>/` | Shared across repositories |
 | Client-specific | `.<client>/skills/<name>/` | Varies |
 
 ### Packaging
@@ -459,11 +458,11 @@ The 6-field YAML frontmatter serves as the interface contract between a skill an
 2. Add a forwarder in `.github/instructions/<topic>.instructions.md` for Copilot discovery
 3. Reference from `AGENTS.md` canonical instruction documents section
 
-### Adding a New Sub-Skill
+### Adding a New User-Global Skill
 
-1. Create `.agents/skills/<skill-name>/SKILL.md`
+1. Create `~/.agent/skills/<skill-name>/SKILL.md`
 2. Ensure `name` matches directory name
-3. Validate: `python -m scripts.quick_validate .agents/skills/<skill-name>`
+3. Validate: `python -m scripts.quick_validate ~/.agent/skills/<skill-name>`
 
 ---
 

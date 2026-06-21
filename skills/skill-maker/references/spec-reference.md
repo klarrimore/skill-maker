@@ -163,7 +163,7 @@ and avoiding client-specific machinery.
   (see authoring-guide.md) and have scripts degrade gracefully when a capability is absent.
 - The folder is the portable unit of distribution. Plugin and marketplace packaging formats are
   client-specific and mutually incompatible. To reach more than one client, ship the skill as a
-  folder, or a symlink into the cross-client `.agents/skills/` location, not as a plugin.
+  folder in a skills directory the target clients read, not only as a plugin.
 - Always-on instruction files are client-specific. If the better mechanism is an always-on
   instruction rather than a skill, note that its file format is not portable the way `SKILL.md`
   is; `AGENTS.md` is the cross-tool convention, and some clients read their own equivalent
@@ -182,6 +182,7 @@ emerging cross-client convention:
 | Project | `<project>/.<client>/skills/` | The client's native location |
 | Project | `<project>/.agents/skills/` | Cross-client interoperability |
 | User | `~/.<client>/skills/` | The client's native location |
+| User | `~/.agent/skills/` | User-global Agent CLI location |
 | User | `~/.agents/skills/` | Cross-client interoperability |
 
 Many clients also read one or more shared compatibility paths in addition to their own native

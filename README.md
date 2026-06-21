@@ -44,7 +44,6 @@ skill-maker/                         repository (workspace)
         utils.py                     shared SKILL.md parsing helper
       assets/                        templates (the review-view template)
       LICENSE.txt                    Apache-2.0
-  .agents/skills/                    build tooling (skills used to develop this repo)
   AGENTS.md                          repo-wide agent guidance (dev config, not shipped)
   CLAUDE.md  .github/                client bootstrap files (dev config, not shipped)
   README.md  .gitignore
@@ -67,7 +66,7 @@ The evaluation and description-optimization loops are run by hand; see
 ## Install and use the skill
 
 Place the `skills/skill-maker/` directory where your agent looks for skills, such as
-`.agents/skills/skill-maker/` (project) or `~/.agents/skills/skill-maker/` (user).
+`~/.agent/skills/skill-maker/` for a user-global install.
 
 ## License
 
