@@ -1,0 +1,25 @@
+# Changelog - skill-maker
+
+## June 21, 2026
+
+### New
+
+- **Evaluation Test Suite**: Added a dogfood eval set with task evals for skill creation, validation, and description optimization, plus 20 trigger-query test cases and a deliberately malformed skill fixture for testing validation failures.
+
+- **Project Architecture Blueprint**: Added a reusable architecture blueprint generator skill for producing structured project documentation.
+
+- **agentskills.io Standard Conformance**: Migrated all skills from the GitHub-specific `.github/skills/` path to the cross-client `.agents/skills/` interoperability path, bringing each into full compliance with the open agentskills.io standard.
+
+- **Skill-Authoring Standards**: Ported comprehensive skill-authoring guidance including a skill-vs-always-on decision gate, reserved-word name advisory, portability operations, inline dependency declarations, and documented anti-patterns.
+
+### Improvements
+
+- **Reorganized Skill Layout**: Moved skill-maker under `skills/` directory, genericized the installation step, and reordered the Step 1 workflow lead for better clarity.
+
+- **Refactored Internal Structure**: Cleaned up and reorganized project internals.
+
+- **Documentation Reconciled**: Removed references to a non-existent benchmark viewer, aligned eval documentation with what actually ships, and corrected misleading "review view" language.
+
+### Housekeeping
+
+- Removed an installed skill that was checked in by mistake.

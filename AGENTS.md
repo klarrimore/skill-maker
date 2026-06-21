@@ -37,6 +37,8 @@ Agents that honor `AGENTS.md` should load and follow these files as needed:
 ```bash
 cd skills/skill-maker
 
+pip install -r requirements.txt        # install Python deps (PyYAML, etc.)
+
 skills-ref validate .                  # canonical validator, if installed
 python -m scripts.quick_validate .     # bundled fallback
 python -m scripts.quick_validate /path/to/other-skill

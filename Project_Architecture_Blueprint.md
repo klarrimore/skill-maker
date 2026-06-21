@@ -3,7 +3,7 @@
 > Generated: 2026-06-21 (refreshed)  
 > Repository: `klarrimore/skill-maker`  
 > Version: 1.1 (per `SKILL.md` frontmatter `metadata.version`)  
-> Latest commit: `ee89bd1`
+> Latest commit: `c6beb74`
 
 ---
 
@@ -91,7 +91,7 @@
 │  │   ├── agent-safety.instructions.md                      │
 │  │   ├── markdown-gfm.instructions.md                      │
 │  │   └── update-docs-on-code-change.instructions.md        │
-│  └── skills/            ←── Local sub-skills               │
+│  └── skills/            ←── Build-tooling skills (dev only)│
 │                                                             │
 │  .github/instructions/  ←── Platform forwarders            │
 │                                                             │
@@ -609,7 +609,7 @@ if __name__ == "__main__":
 
 ## 15. Keeping This Blueprint Updated
 
-This blueprint reflects the repository at commit `ee89bd1` (latest as of generation). Update it when:
+This blueprint reflects the repository at commit `c6beb74` (latest as of generation). Update it when:
 
 - New scripts are added to `scripts/`
 - New reference documents are added to `references/`

@@ -14,6 +14,7 @@ Run from the skill directory:
 
 ```bash
 cd skills/skill-maker
+pip install -r requirements.txt
 python -m scripts.quick_validate .
 python -m scripts.package_skill . ../../dist
 ```
