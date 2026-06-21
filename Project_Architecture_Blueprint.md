@@ -1,8 +1,9 @@
 # Project Architecture Blueprint
 
-> Generated: 2026-06-21  
+> Generated: 2026-06-21 (refreshed)  
 > Repository: `klarrimore/skill-maker`  
-> Version: 1.1 (per `SKILL.md` frontmatter `metadata.version`)
+> Version: 1.1 (per `SKILL.md` frontmatter `metadata.version`)  
+> Latest commit: `ee89bd1`
 
 ---
 
@@ -608,7 +609,7 @@ if __name__ == "__main__":
 
 ## 15. Keeping This Blueprint Updated
 
-This blueprint reflects the repository at commit `1089878` (latest as of generation). Update it when:
+This blueprint reflects the repository at commit `ee89bd1` (latest as of generation). Update it when:
 
 - New scripts are added to `scripts/`
 - New reference documents are added to `references/`

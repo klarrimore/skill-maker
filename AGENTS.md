@@ -4,17 +4,21 @@ This is the central place for repo-wide agent guidance. Read this after the plat
 
 ## Repository shape
 
-- `SKILL.md` is the skill entry point and should stay lean.
-- `references/` holds deeper material that `SKILL.md` points to on demand.
-- `scripts/` contains the executable helpers for validation and packaging.
-- `assets/` contains templates used in output (the review-view template).
+This repo is a workspace. The deliverable skill is self-contained under `skills/skill-maker/`; build tooling and client config live at the repository root and are not part of the skill.
+
+- `skills/skill-maker/` is the deliverable skill (everything that ships).
+  - `skills/skill-maker/SKILL.md` is the skill entry point and should stay lean.
+  - `skills/skill-maker/references/` holds deeper material that `SKILL.md` points to on demand.
+  - `skills/skill-maker/scripts/` contains the executable helpers for validation and packaging.
+  - `skills/skill-maker/assets/` contains templates used in output (the review-view template).
+- `.agents/skills/` holds build-tooling skills used to develop this repo; `.agents/skills/skill-maker` is a symlink to `skills/skill-maker/` so the deliverable is discoverable as a skill.
 - `.agents/instructions/` contains canonical reusable instruction documents.
 - `.github/instructions/` contains lightweight forwarders for platform auto-discovery.
 - `.agents/` is the local home for reusable agent assets that should not live in the platform bootstrap files.
 
 ## Working rules
 
-- Run Python commands from the repo root as modules.
+- Run Python commands as modules from the target skill's directory (where its `scripts/` package lives), e.g. `cd skills/skill-maker`.
 - Keep skill instructions portable: use the standard frontmatter fields only, and avoid client-specific extensions unless you are intentionally locking to one platform.
 - Prefer progressive disclosure. Put detail in `references/` and tell the agent exactly when to load it.
 - Keep `SKILL.md` short; move repeated logic into `scripts/` and reusable prompt material into `.agents/`.
@@ -31,18 +35,21 @@ Agents that honor `AGENTS.md` should load and follow these files as needed:
 ## Common commands
 
 ```bash
-python -m scripts.quick_validate .
-python -m scripts.quick_validate /path/to/other-skill
-skills-ref validate .
+cd skills/skill-maker
 
-python -m scripts.package_skill . ./dist
+skills-ref validate .                  # canonical validator, if installed
+python -m scripts.quick_validate .     # bundled fallback
+python -m scripts.quick_validate /path/to/other-skill
+
+python -m scripts.package_skill . ../../dist
 ```
 
 ## Eval workflow
 
 - Validate before packaging.
 - The evaluation and description-optimization loops are run by hand; the methodology lives in
-  `references/evaluation.md` and `references/description-optimization.md`.
+  `skills/skill-maker/references/evaluation.md` and
+  `skills/skill-maker/references/description-optimization.md`.
 - Use train/holdout splits when tuning the description; choose the best description by the
   held-out test score, not the train score.
 - Present test outputs to the user inline for review before critiquing them yourself.
@@ -53,6 +60,6 @@ Use `.agents/` for local reusable agent assets:
 
 - `.agents/agents/` for prompt fragments or agent-specific instructions
 - `.agents/commands/` for reusable command templates or task wrappers
-- `.agents/skills/` for local skill-related helpers
+- `.agents/skills/` for build-tooling skills used to develop this repo (plus the `skill-maker` symlink to the deliverable)
 
 Keep files there small, focused, and cross-client friendly.
