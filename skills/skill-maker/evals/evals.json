@@ -1,0 +1,46 @@
+{
+  "skill_name": "skill-maker",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Every Monday I do the same thing: pull our backend error logs from the last 7 days, group them by service, count the top 10 recurring errors, and write a short summary for the team standup. I'm tired of redoing it from scratch each week. Can you turn this into a reusable skill?",
+      "expected_output": "A new skill directory whose name matches its frontmatter, with a SKILL.md that has spec-valid frontmatter and an imperative body, plus proposed test cases. The skill should be validated before handoff.",
+      "files": [],
+      "expectations": [
+        "Produces a skill directory containing a SKILL.md file",
+        "The SKILL.md name field is kebab-case (lowercase letters, digits, and hyphens only) and matches the skill's directory name exactly",
+        "The description field states both what the skill does and when to trigger it, is 1024 characters or fewer, and contains no angle brackets",
+        "The SKILL.md body is written as imperative instructions rather than a description of the skill",
+        "Depth beyond the core steps is pushed into references/ rather than inflating SKILL.md, or the body is short enough that no split is needed",
+        "Proposes or writes at least two realistic test-case prompts (for example in evals/evals.json) for the new skill",
+        "Runs a validator (skills-ref validate or python -m scripts.quick_validate) against the new skill and reports the result"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I downloaded this skill but it won't load and I think the SKILL.md is malformed. Make it spec-compliant and confirm it actually validates.",
+      "expected_output": "Every frontmatter violation in the fixture is identified and fixed (stray top-level keys moved under metadata, name made kebab-case and matched to the directory, angle brackets removed from the description), and the bundled validator is re-run and reports the skill as valid.",
+      "files": ["evals/files/broken-skill/SKILL.md"],
+      "expectations": [
+        "Identifies that the name 'Weekly_Log_Summary' is not kebab-case and does not match the directory name 'broken-skill'",
+        "Identifies that the description contains angle brackets, which are disallowed",
+        "Identifies that 'author' and 'version' are not recognized top-level frontmatter fields and belong under metadata",
+        "Fixes every identified violation so the frontmatter uses only the recognized fields with a kebab-case name matching the directory and a bracket-free description",
+        "Re-runs the validator (skills-ref validate or python -m scripts.quick_validate) and reports that the skill now validates"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I built a skill that turns meeting transcripts into action-item lists, but it almost never fires when I actually want it, even though that's exactly what I'm asking for. Its current description is just 'Processes meeting transcripts.' Can you rewrite the description so it triggers reliably?",
+      "expected_output": "An improved description selected through an eval-driven loop: a set of realistic trigger queries split should-trigger and should-not-trigger, a train/held-out split with selection on the held-out score, and a final description that is more pushy and specific while staying within the spec limits. The before and after are shown to the user.",
+      "files": [],
+      "expectations": [
+        "Generates roughly 20 trigger-eval queries split between should-trigger and should-not-trigger cases",
+        "Includes near-miss should-not-trigger queries that share keywords or domain with the skill but need something different, not obviously-irrelevant negatives",
+        "Splits the queries into train and held-out sets and selects the winning description by the held-out score rather than the train score",
+        "The final description states what the skill does and when to use it, is more specific than the original, is 1024 characters or fewer, and contains no angle brackets",
+        "Shows the user the before and after descriptions with their scores"
+      ]
+    }
+  ]
+}

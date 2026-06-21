@@ -55,8 +55,9 @@ carry over.
 
 ## Step 2: While runs are in progress, draft assertions
 
-Do not idle while runs execute. Draft objectively verifiable assertions with descriptive
-names that read clearly in the review view, and explain each to the user. Subjective
+Do not idle while runs execute. Draft objectively verifiable assertions - the
+`expectations` entries in `evals.json` and `grading.json` - with descriptive,
+self-explanatory names, and explain each to the user. Subjective
 skills (writing voice, design quality) are better judged qualitatively; do not force
 assertions onto things that need human judgment. Update the `eval_metadata.json` files and
 `evals/evals.json` once drafted, and tell the user what they will see: both the

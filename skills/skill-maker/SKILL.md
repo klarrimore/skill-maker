@@ -128,8 +128,8 @@ are in progress.
 
 Run the test prompts, get the outputs in front of the user fast, gather feedback, then
 rewrite. The full evaluation workflow (running with-skill and baseline runs, drafting
-assertions, grading by hand, aggregating a benchmark, building the review view, reading
-feedback, and the improvement heuristics) lives in **`references/evaluation.md`**. The
+assertions, grading by hand, aggregating a benchmark, presenting the outputs for review,
+reading feedback, and the improvement heuristics) lives in **`references/evaluation.md`**. The
 short version of how to improve: generalize from feedback rather than overfitting to the
 test prompts, keep the prompt lean by cutting instructions the transcripts show the agent
 ignoring, explain the why, and bundle a script in `scripts/` when every run reinvents the
@@ -196,8 +196,8 @@ skill in a read-only path) is in **`references/environment-adaptations.md`**. Re
 your environment lacks one of those capabilities.
 
 One rule that holds regardless of environment: when you run test cases, get the outputs in
-front of the human to review before you start critiquing and rewriting yourself. Generate
-the review view first.
+front of the human to review before you start critiquing and rewriting yourself. Present
+the outputs for review first.
 
 ---
 
@@ -233,7 +233,10 @@ Scripts (run as modules from the skill root, e.g. `python -m scripts.quick_valid
 - `scripts/package_skill.py` - validate then zip into a `.skill` for hosts that accept uploads.
 
 Assets:
-- `assets/eval_review.html` - template for the human review view; fill the placeholder by hand.
+- `assets/eval_review.html` - template for the trigger-query review used in description optimization (Step 6); fill the placeholders by hand. There is no separate benchmark viewer; present benchmark results inline or as a `benchmark.md` summary.
+
+Evals (self-tests; not shipped - excluded from the packaged `.skill`):
+- `evals/` - an example `evals.json`, trigger queries, and a broken-skill fixture that exercise this skill on its own format. See `evals/README.md`.
 
 ---
 

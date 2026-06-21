@@ -56,5 +56,5 @@ Installed skill directories are often read-only.
 ## One rule that holds in every environment
 
 When you run test cases, get the outputs in front of the human to review before you start
-critiquing and rewriting them yourself. Generate the review view (or present results
-inline) first. Put it on your task list so it does not get skipped.
+critiquing and rewriting them yourself. Present the results for review first - inline, or
+saved to a file the user can open. Put it on your task list so it does not get skipped.
