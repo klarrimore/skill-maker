@@ -1,18 +1,21 @@
 # skill-maker
 
-An Agent Skill for creating, improving, evaluating, and validating other Agent Skills,
-conformant to the open [agentskills.io](https://agentskills.io) standard.
+This repository is a workspace for building, validating, and packaging **skill-maker**, an
+Agent Skill that helps create, improve, evaluate, and validate other Agent Skills, conformant
+to the open [agentskills.io](https://agentskills.io) standard.
 
-This repo is the skill itself plus the helpers used to author, validate, package, benchmark,
-and review it. The core skill lives in `SKILL.md`; supporting depth is pushed into
-`references/`, executable helpers live in `scripts/`, and reusable agent guidance lives in
-`AGENTS.md`, `CLAUDE.md`, and `.github/copilot-instructions.md`.
+The deliverable skill lives in `skills/skill-maker/` and is self-contained: its `SKILL.md`,
+`references/`, `scripts/`, `assets/`, and `LICENSE.txt` are everything that ships. Build
+tooling and repo configuration live at the repository root and are not part of the skill.
 
 ## Quick start
 
+Run from the skill directory:
+
 ```bash
+cd skills/skill-maker
 python -m scripts.quick_validate .
-python -m scripts.package_skill . ./dist
+python -m scripts.package_skill . ../../dist
 ```
 
 ## Requirements
@@ -23,57 +26,48 @@ python -m scripts.package_skill . ./dist
 ## Layout
 
 ```
-skill-maker/
-  SKILL.md            Skill entry point
-  AGENTS.md           Central repo-wide agent guidance
-  CLAUDE.md           Claude Code bootstrap
-  .github/copilot-instructions.md  Copilot bootstrap
-  references/         Loaded on demand
-    spec-reference.md           Exact frontmatter schema, naming, structure, portability
-    authoring-guide.md          Anatomy, writing patterns, full do's and don'ts
-    evaluation.md               Test, grade, benchmark, review, improve workflow
-    description-optimization.md Eval-driven triggering method
-    environment-adaptations.md  Capability-based adaptations (no subagents/display/CLI)
-    schemas.md                  JSON schemas for evals/grading/benchmark
-  .agents/            Local reusable agent assets
-    instructions/               Canonical reusable instruction documents
-  .github/instructions/  Forwarders for Copilot auto-discovery
-  scripts/            Run as modules from the skill root
-    quick_validate.py   Zero-network spec validator (fallback for `skills-ref validate`)
-    package_skill.py    Validate then zip into a .skill for hosts that accept uploads
-    utils.py            Shared SKILL.md parsing helper
-  assets/             Templates (the review-view template)
-  LICENSE.txt         Apache-2.0
+skill-maker/                         repository (workspace)
+  skills/
+    skill-maker/                     the deliverable skill (self-contained)
+      SKILL.md                       skill entry point
+      references/                    loaded on demand
+        spec-reference.md
+        authoring-guide.md
+        evaluation.md
+        description-optimization.md
+        environment-adaptations.md
+        schemas.md
+      scripts/                       run as modules from this directory
+        quick_validate.py            zero-network spec validator
+        package_skill.py             validate then zip into a .skill
+        utils.py                     shared SKILL.md parsing helper
+      assets/                        templates (the review-view template)
+      LICENSE.txt                    Apache-2.0
+  .agents/skills/                    build tooling (skills used to develop this repo)
+  AGENTS.md                          repo-wide agent guidance (dev config, not shipped)
+  CLAUDE.md  .github/                client bootstrap files (dev config, not shipped)
+  README.md  .gitignore
 ```
 
-## Common commands
+## Validate and package a skill
 
-Run Python commands from the repo root.
+Run from the target skill's directory, where its `scripts/` package lives:
 
 ```bash
-# Validate a skill
-skills-ref validate .
-python -m scripts.quick_validate .
-python -m scripts.quick_validate /path/to/other-skill
-
-# Package a skill after validation
-python -m scripts.package_skill . ./dist
+skills-ref validate .                 # canonical validator, if installed
+python -m scripts.quick_validate .    # bundled fallback
+python -m scripts.package_skill . ../../dist
 ```
 
 The evaluation and description-optimization loops are run by hand; see
-`references/evaluation.md` and `references/description-optimization.md`.
+`skills/skill-maker/references/evaluation.md` and
+`skills/skill-maker/references/description-optimization.md`.
 
-## Agent guidance
+## Install and use the skill
 
-For repo-wide agent instructions, read `AGENTS.md`. Canonical reusable instruction
-documents live under `.agents/instructions/`. `.github/instructions/` contains
-forwarders for Copilot auto-discovery.
-
-## Use
-
-Install by placing the `skill-maker/` directory where your agent looks for skills, such as
+Place the `skills/skill-maker/` directory where your agent looks for skills, such as
 `.agents/skills/skill-maker/` (project) or `~/.agents/skills/skill-maker/` (user).
 
 ## License
 
-Apache-2.0. See LICENSE.txt.
+Apache-2.0. See `skills/skill-maker/LICENSE.txt`.
