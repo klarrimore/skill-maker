@@ -1,5 +1,11 @@
 # Changelog - skill-maker
 
+## July 4, 2026
+
+### Improvements
+
+- **Sharpened skill-maker SKILL.md**: pruned a triple-stated core loop down to a single cycle plus the numbered procedure, tightened the triggering `description` (dropped the identity restatement and a duplicated spec-compliance branch), and cut two half-redundant guidance sections. Bumped to v1.2.
+
 ## June 21, 2026
 
 ### New

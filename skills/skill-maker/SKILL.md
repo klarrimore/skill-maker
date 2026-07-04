@@ -1,13 +1,13 @@
 ---
 name: skill-maker
-description: Create new agent skills, modify and improve existing ones, and measure skill performance, following the open agentskills.io standard for cross-platform portability. Use this skill whenever the user wants to author a skill from scratch, turn a workflow or repeated task into a reusable skill, edit or refactor an existing skill, make a skill spec-compliant or portable, validate SKILL.md frontmatter, test or benchmark a skill, or optimize a skill description for better triggering, even if they do not say the word "skill" explicitly.
+description: Use this skill whenever the user wants to author a skill from scratch, turn a workflow or repeated task into a reusable skill, edit or refactor an existing skill, make a skill spec-compliant or portable, test or benchmark a skill, or optimize a skill description for better triggering, following the open agentskills.io standard for cross-platform portability, even if they do not say the word "skill" explicitly.
 license: Apache-2.0
 compatibility: Portable across any skills-compatible agent that reads the agentskills.io format. Bundled validation and packaging scripts require Python 3.8+ and PyYAML.
 metadata:
   author: klarrimore
   standard: agentskills.io
   spec-revision: "2025-12-18"
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Skill Maker
@@ -21,29 +21,24 @@ the skill stays portable; reach for a client-specific frontmatter field and it d
 
 ## The core loop
 
-1. Figure out what the skill is for and roughly how it should work.
-2. Draft the skill (`SKILL.md` plus any bundled resources).
-3. Run agent-with-access-to-the-skill on a few realistic test prompts.
-4. Evaluate the outputs with the user, qualitatively and (where it fits) quantitatively.
-5. Rewrite the skill based on that feedback.
-6. Repeat until satisfied, then expand the test set and try at larger scale.
-7. Optimize the `description` for reliable triggering.
-8. Validate against the spec, then hand back the skill folder.
+The work is a cycle, not a checklist: **draft → run on real prompts → evaluate with the
+user → rewrite → repeat**, then optimize the `description` for triggering, validate against
+the spec, and hand back the folder. What makes it a loop is the repeat: most of the value
+comes from cycling draft-and-evaluate several times, not from marching the procedure once.
+The numbered Steps below are that procedure in full; this is its shape.
 
-Your job is to figure out where the user is in this loop and jump in there. If they
+Your job is to figure out where the user is in this cycle and jump in there. If they
 say "I want a skill for X", help narrow it, draft it, write test cases, run them, and
 iterate. If they already have a draft, go straight to evaluate-and-improve. If they say
 "skip the evals, just vibe with me", do that. Stay flexible.
 
-If you keep a task list, add the loop steps to it so none get skipped.
+If you keep a task list, add the Steps below to it so none get skipped.
 
 ## Communicating with the user
 
-Users range from career engineers to people who just opened a terminal for the first
-time. Read context cues and match your phrasing. "Evaluation" and "benchmark" are
-usually fine; only use "JSON" or "assertion" unbidden if the user has shown they know
-those terms. Briefly define a term when in doubt. A short definition costs little; a
-confused user costs more.
+Skill authors range from career engineers to people who just opened a terminal.
+"Evaluation" and "benchmark" are usually fine; only use "JSON" or "assertion" unbidden if
+the user has shown they know those terms, and briefly define a term when in doubt.
 
 ---
 
@@ -111,10 +106,9 @@ the body loads on activation, and bundled resources load on demand.
 
 ### Safety and the principle of least surprise
 
-A skill must not contain malware, exploit code, or anything that compromises system
-security, and its actual behavior must not surprise a user who only read its description.
-Do not build misleading skills, or skills meant to enable unauthorized access, data
-exfiltration, or similar. (Benign creative framings like "roleplay as an X" are fine.)
+A skill's actual behavior must not surprise a user who only read its description: no
+hidden unauthorized access, data exfiltration, or misleading intent behind a benign-looking
+description. (Openly benign creative framings like "roleplay as an X" are fine.)
 
 ### Step 4: Test cases
 
@@ -238,10 +232,3 @@ Assets:
 
 Evals (self-tests; not shipped - excluded from the packaged `.skill`):
 - `evals/` - an example `evals.json`, trigger queries, and a broken-skill fixture that exercise this skill on its own format. See `evals/README.md`.
-
----
-
-Core loop, one more time, because it is the whole game: figure out what the skill is for;
-draft or edit it; run it on real prompts; evaluate the outputs with the user; validate
-against the spec; repeat until good; hand back the folder. Keep `SKILL.md` lean and let
-the references carry the depth. Good luck.
