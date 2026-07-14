@@ -10,15 +10,16 @@ package_skill.py imports.
 
 import sys
 import re
-import yaml
 from pathlib import Path
+
+from scripts.utils import parse_frontmatter
 
 # Directories whose contents are not packaged as part of the skill, so any
 # SKILL.md inside them shouldn't count toward the single-SKILL.md check below.
 # Mirrors package_skill.py: __pycache__ and node_modules are excluded at any
-# depth, while evals is only excluded at the skill root.
-EXCLUDED_DIR_PARTS = {'__pycache__', 'node_modules'}
-ROOT_EXCLUDED_DIR_PARTS = {'evals'}
+# depth, while evals and tests are only excluded at the skill root.
+EXCLUDED_DIR_PARTS = {'__pycache__', 'node_modules', '.pytest_cache'}
+ROOT_EXCLUDED_DIR_PARTS = {'evals', 'tests'}
 
 # Soft budget for the SKILL.md body (recommendation, not a hard limit, per the spec).
 BODY_LINE_BUDGET = 500
@@ -71,23 +72,10 @@ def validate_skill(skill_path):
 
     # Read and validate frontmatter
     content = skill_md.read_text()
-    if not content.startswith('---'):
-        return False, "No YAML frontmatter found"
-
-    # Extract frontmatter
-    match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
-    if not match:
-        return False, "Invalid frontmatter format"
-
-    frontmatter_text = match.group(1)
-
-    # Parse YAML frontmatter
     try:
-        frontmatter = yaml.safe_load(frontmatter_text)
-        if not isinstance(frontmatter, dict):
-            return False, "Frontmatter must be a YAML dictionary"
-    except yaml.YAMLError as e:
-        return False, f"Invalid YAML in frontmatter: {e}"
+        frontmatter, _body = parse_frontmatter(content)
+    except ValueError as e:
+        return False, str(e)
 
     # Define allowed properties (the six recognized agentskills.io fields)
     ALLOWED_PROPERTIES = {'name', 'description', 'license', 'allowed-tools', 'metadata', 'compatibility'}
@@ -168,9 +156,10 @@ def body_warnings(skill_path):
     if not skill_md.exists():
         return warnings
     content = skill_md.read_text()
-    # Strip frontmatter to measure only the body
-    m = re.match(r'^---\n.*?\n---\n?(.*)$', content, re.DOTALL)
-    body = m.group(1) if m else content
+    try:
+        frontmatter, body = parse_frontmatter(content)
+    except ValueError:
+        return warnings
     lines = body.count('\n') + 1
     approx_tokens = len(body) // 4
     if lines > BODY_LINE_BUDGET:
@@ -184,18 +173,12 @@ def body_warnings(skill_path):
             f"{BODY_TOKEN_BUDGET}). Move detail into references/ and point to it."
         )
     # Description ceiling advisory: within 5% of the 1024 limit is a maintenance trap.
-    fm_match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
-    if fm_match:
-        try:
-            fm = yaml.safe_load(fm_match.group(1)) or {}
-            desc = (fm.get('description') or '').strip()
-            if 973 <= len(desc) <= 1024:
-                warnings.append(
-                    f"Description is {len(desc)} characters, within 5% of the 1024 limit. "
-                    f"The next trigger-phrase edit will breach it; trim now."
-                )
-        except yaml.YAMLError:
-            pass
+    desc = (frontmatter.get('description') or '').strip()
+    if 973 <= len(desc) <= 1024:
+        warnings.append(
+            f"Description is {len(desc)} characters, within 5% of the 1024 limit. "
+            f"The next trigger-phrase edit will breach it; trim now."
+        )
     return warnings
 
 

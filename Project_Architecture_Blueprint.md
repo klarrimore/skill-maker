@@ -81,7 +81,7 @@
 │  scripts/ (Python 3.8+, PyYAML)                            │
 │  ├── quick_validate.py  ←── validate_skill() → (bool,msg) │
 │  ├── package_skill.py   ←── package_skill() → .skill zip  │
-│  └── utils.py           ←── parse_skill_md() → tuple      │
+│  └── utils.py           ←── parse_frontmatter() → tuple   │
 │                                                             │
 │  assets/                                                    │
 │  └── eval_review.html   ←── Interactive eval review UI     │
@@ -170,10 +170,16 @@ A Python package (3 modules) providing validation and packaging:
 validate_skill(skill_path) -> (bool, message)  # quick_validate.py
 body_warnings(skill_path) -> list[str]          # quick_validate.py
 package_skill(skill_path, output_dir) -> Path   # package_skill.py
-parse_skill_md(skill_path) -> (name, desc, content)  # utils.py
+parse_frontmatter(content) -> (frontmatter: dict, body: str)  # utils.py, raises ValueError
 ```
 
-**Dependency chain:** `package_skill.py` imports `validate_skill` from `quick_validate.py`. Both are standalone — no external dependencies beyond Python 3.8+ and PyYAML.
+**Dependency chain:** `package_skill.py` imports `validate_skill` from `quick_validate.py`; both
+`validate_skill` and `body_warnings` import `parse_frontmatter` from `utils.py` — one frontmatter
+parse, two callers. No external dependencies beyond Python 3.8+ and PyYAML.
+
+`tests/` holds pytest unit tests against `parse_frontmatter` (dev-only; excluded from packaging
+the same way `evals/` is). Requires `../../requirements-dev.txt` (pytest), not the skill's own
+`requirements.txt`.
 
 ### 3.4 assets/ — Output Templates
 
@@ -304,7 +310,7 @@ Scripts use a simple pattern:
 
 - No runtime configuration files; behavior is driven by the skill's content
 - Environment differences handled via `references/environment-adaptations.md` (capability detection, not env vars)
-- `.gitignore` excludes transient artifacts: `__pycache__/`, `*.pyc`, `*.skill`, `dist/`, `*-workspace/`
+- `.gitignore` excludes transient artifacts: `__pycache__/`, `*.pyc`, `*.skill`, `dist/`, `*-workspace/`, `.pytest_cache/`
 
 ---
 
@@ -317,35 +323,39 @@ scripts/
 ├── __init__.py          # Empty; makes scripts/ a package
 ├── quick_validate.py    # Spec validation (zero-network)
 ├── package_skill.py     # ZIP packaging with validation gate
-└── utils.py             # Shared SKILL.md parsing
+└── utils.py             # parse_frontmatter() — the one frontmatter parser, two callers
+
+tests/                   # dev-only, excluded from packaging like evals/
+└── test_utils.py        # unit tests for parse_frontmatter
 ```
 
 - Run as modules from repo root: `python -m scripts.quick_validate .`
-- Internal imports: `from scripts.quick_validate import validate_skill`
+- Internal imports: `from scripts.quick_validate import validate_skill`, `from scripts.utils import parse_frontmatter`
 
 ### Python Patterns Used
 
 | Pattern | Where | Detail |
 |---------|-------|--------|
 | Functional returns over exceptions | `validate_skill` | Returns `(bool, str)` tuple instead of raising |
+| Raise, caller decides strictness | `parse_frontmatter` | Raises `ValueError`; `validate_skill` treats it as a hard failure, `body_warnings` treats it as soft (returns no warnings) |
 | `pathlib.Path` everywhere | All scripts | No `os.path` usage |
-| `re` for frontmatter parsing | `quick_validate.py` | Regex extraction of YAML block |
-| `yaml.safe_load` | `quick_validate.py` | Safe YAML parsing (no arbitrary object instantiation) |
-| Exclusion lists | `package_skill.py` | Configurable skip patterns for packaging |
+| `re` + `yaml.safe_load` for frontmatter parsing | `utils.py` | One regex splits frontmatter from body; `yaml.safe_load` parses the frontmatter block. Used by both `validate_skill` and `body_warnings` — no duplicate parsing |
+| Exclusion lists | `package_skill.py`, `quick_validate.py` | Configurable skip patterns for packaging and for the single-`SKILL.md` check; still duplicated between the two files (a known, not-yet-consolidated seam) |
 | `zipfile.ZIP_DEFLATED` | `package_skill.py` | Standard ZIP compression |
 
 ### Dependencies
 
 - **Runtime:** Python 3.8+, PyYAML
-- **No dev dependencies** documented (no test framework, linter, or formatter configured)
+- **Dev:** pytest (`requirements-dev.txt` at the repo root — not the skill's own `requirements.txt`, which stays runtime-only)
 
 ---
 
 ## 8. Testing Architecture
 
-### Evaluation-as-Testing
+### Evaluation-as-Testing (skill behavior)
 
-The project uses a **human-in-the-loop evaluation** model rather than automated unit tests:
+The project uses a **human-in-the-loop evaluation** model for the skill's own instructed
+behavior, rather than automated assertions:
 
 1. **Eval cases** (`evals/evals.json`) define prompts and expectations
 2. **With-skill runs** execute the skill on cases
@@ -359,9 +369,22 @@ The project uses a **human-in-the-loop evaluation** model rather than automated 
 - Workspace directories (`*-workspace/iteration-N/`) hold per-run outputs
 - `eval_metadata.json` per test case tracks assertions
 
-### No Automated Test Suite
+### Automated Unit Tests (scripts/)
 
-The repository contains no `pytest`, `unittest`, or CI test configuration. Testing is by-design a manual process integrated into the skill-creation workflow itself.
+`tests/test_utils.py` covers `parse_frontmatter` with pytest: the success path plus every
+`ValueError` case (missing opening/closing delimiter, invalid YAML, non-mapping frontmatter).
+Dev-only — install with `pip install -r requirements-dev.txt` from the repo root, run with
+`python -m pytest tests/` from `skills/skill-maker/`. Excluded from the packaged `.skill` the
+same way `evals/` is.
+
+This deterministic layer (scripts/) is unit-tested; the instructed-behavior layer (SKILL.md,
+references/) stays eval-based — the two are different kinds of correctness and don't share a
+testing strategy.
+
+### No CI
+
+No GitHub Actions or other CI configuration runs these tests automatically; `python -m pytest
+tests/` is a manual step today.
 
 ---
 
@@ -380,7 +403,7 @@ Skills distribute as directories placed in conventional paths:
 
 `scripts/package_skill.py` produces a `.skill` ZIP for hosts accepting uploads:
 - Validates first (gate: no package without passing validation)
-- Excludes: `__pycache__/`, `node_modules/`, `*.pyc`, `.DS_Store`, root-level `evals/`
+- Excludes: `__pycache__/`, `.pytest_cache/`, `node_modules/`, `*.pyc`, `.DS_Store`, root-level `evals/` and `tests/`
 - Output: `<name>.skill` in specified directory
 
 ### No CI/CD Pipeline
@@ -426,9 +449,12 @@ if not valid:
 Both `quick_validate.py` and `package_skill.py` maintain parallel exclusion lists to keep non-skill content out of validation and packaging:
 
 ```python
-EXCLUDED_DIR_PARTS = {'__pycache__', 'node_modules'}
-ROOT_EXCLUDED_DIR_PARTS = {'evals'}
+EXCLUDED_DIR_PARTS = {'__pycache__', 'node_modules', '.pytest_cache'}
+ROOT_EXCLUDED_DIR_PARTS = {'evals', 'tests'}
 ```
+
+This duplication is a known, not-yet-consolidated seam — the two lists have drifted in shape
+before (different relative-path conventions) and must be updated in lockstep by hand.
 
 ### Frontmatter-as-Contract
 
