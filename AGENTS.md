@@ -15,6 +15,7 @@ This repo is a workspace. The deliverable skill is self-contained under `skills/
 - `.github/instructions/` contains lightweight forwarders for platform auto-discovery.
 - `.agents/` is the local home for reusable agent assets that should not live in the platform bootstrap files.
   Skills used across repositories live in the user-global `~/.agent/skills/` directory, not in this repo.
+- `docs/agents/` holds this repo's Agent skills configuration (issue tracker, domain docs) — see the "Agent skills" section below.
 
 ## Working rules
 

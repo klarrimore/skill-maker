@@ -10,6 +10,7 @@
 
 - **Consolidated frontmatter parsing**: Collapsed three divergent frontmatter parsers (one of them dead code, unused) into a single `parse_frontmatter` in `utils.py`, used by both `validate_skill` and `body_warnings`.
 - **Packaging exclusions extended**: `tests/` and `.pytest_cache/` are now excluded from the packaged `.skill`, matching the existing treatment of `evals/` and `__pycache__`.
+- **Agent skills configuration**: Added `docs/agents/issue-tracker.md` (GitHub Issues via `gh`) and `docs/agents/domain.md` (single-context domain docs), linked from a new "Agent skills" section in `AGENTS.md`.
 
 ## July 4, 2026
 

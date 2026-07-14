@@ -189,6 +189,14 @@ the same way `evals/` is). Requires `../../requirements-dev.txt` (pytest), not t
 
 Canonical instruction documents that apply across the repository and any agent working within it. Platform-specific forwarders in `.github/instructions/` point here for auto-discovery.
 
+### 3.6 docs/agents/ — Agent Skills Configuration
+
+Per-repo configuration consumed by generic engineering skills (issue-filing, triage, domain-modeling), not by skill-maker itself:
+- `issue-tracker.md` — this repo uses GitHub Issues via the `gh` CLI.
+- `domain.md` — single-context domain-doc layout (`CONTEXT.md` + `docs/adr/`, neither created yet).
+
+Pointed to from `AGENTS.md`'s "Agent skills" section.
+
 ---
 
 ## 4. Architectural Layers and Dependencies
