@@ -67,3 +67,13 @@ Use `.agents/` for local reusable agent assets:
 - `.agents/commands/` for reusable command templates or task wrappers
 
 Keep files there small, focused, and cross-client friendly. Do not add project-local skill copies here; install reusable skills under `~/.agent/skills/`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues (`gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout: `CONTEXT.md` + `docs/adr/` at the repo root (neither exists yet — created lazily on demand, e.g. by `/domain-modeling`). See `docs/agents/domain.md`.
