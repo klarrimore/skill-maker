@@ -19,9 +19,10 @@ bash .claude/skills/run-skill-maker/smoke.sh
 ```
 
 Checks: validator passes on the skill, rejects the broken fixture, pytest passes,
-packaging produces a `.skill` zip free of dev artifacts, the eval-review UI renders
-from real data, and (if `google-chrome` exists) a screenshot lands at
-`/tmp/eval_review_screenshot.png` — open that file to see the UI.
+the internal functions import and run directly, packaging produces a `.skill` zip
+free of dev artifacts, the eval-review UI renders from real data, and (if
+`google-chrome` exists) a screenshot lands at `/tmp/eval_review_screenshot.png` —
+open that file to see the UI.
 
 To render/screenshot the review UI alone:
 
@@ -41,6 +42,30 @@ python3 -m scripts.quick_validate .                    # validate (exit 0 = vali
 python3 -m scripts.quick_validate evals/files/broken-skill  # expect exit 1
 python3 -m pytest tests/ -q                            # unit tests
 python3 -m scripts.package_skill . ../../dist          # validate + zip -> dist/skill-maker.skill
+```
+
+## Direct invocation
+
+Most changes here touch the internals, not the CLI. To exercise a changed function
+without the full script, import and call it (still from `skills/skill-maker/`):
+
+```bash
+cd skills/skill-maker
+python3 -c "
+from scripts.utils import parse_frontmatter
+fm, body = parse_frontmatter(open('SKILL.md').read())
+print(fm['name'], '| body lines:', body.count('\n'))
+"
+python3 -c "
+from scripts.quick_validate import validate_skill, body_warnings
+print(validate_skill('.'))          # (True, 'Skill is valid!')
+print(body_warnings('.'))           # [] when under budget
+"
+python3 -c "
+from pathlib import Path
+from scripts.package_skill import should_exclude
+print(should_exclude(Path('my-skill/tests/x.py')))  # True
+"
 ```
 
 ## Prerequisites

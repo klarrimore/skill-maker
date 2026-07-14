@@ -27,7 +27,21 @@ check "validate: broken fixture rejected" 1 $?
 python3 -m pytest tests/ -q >/dev/null 2>&1
 check "pytest: tests/ suite passes" 0 $?
 
-# 4. Packaging produces a .skill zip with no dev artifacts inside
+# 4. Direct invocation: the internal functions import and run without the CLI
+python3 - <<'EOF' >/dev/null 2>&1
+from pathlib import Path
+from scripts.utils import parse_frontmatter
+from scripts.quick_validate import validate_skill, body_warnings
+from scripts.package_skill import should_exclude
+fm, body = parse_frontmatter(Path("SKILL.md").read_text())
+assert fm["name"] == "skill-maker" and body
+assert validate_skill(".") == (True, "Skill is valid!")
+assert isinstance(body_warnings("."), list)
+assert should_exclude(Path("x/tests/t.py")) and not should_exclude(Path("x/SKILL.md"))
+EOF
+check "direct: internals import and run" 0 $?
+
+# 5. Packaging produces a .skill zip with no dev artifacts inside
 python3 -m scripts.package_skill . "$DIST" >/dev/null 2>&1
 check "package: .skill produced" 0 $?
 python3 - "$DIST/skill-maker.skill" <<'EOF'
@@ -38,12 +52,12 @@ sys.exit(1 if bad else 0)
 EOF
 check "package: zip excludes tests/evals/caches" 0 $?
 
-# 5. Eval-review UI renders from real data (all placeholders filled)
+# 6. Eval-review UI renders from real data (all placeholders filled)
 cd "$REPO_ROOT"
 python3 .claude/skills/run-skill-maker/render_review.py "$SKILL_DIR" /tmp/eval_review_rendered.html >/dev/null 2>&1
 check "render: eval_review.html filled from real data" 0 $?
 
-# 6. Screenshot the rendered UI (skipped when no chrome)
+# 7. Screenshot the rendered UI (skipped when no chrome)
 if command -v google-chrome >/dev/null; then
   timeout 60 google-chrome --headless --disable-gpu --window-size=1200,1600 \
     --screenshot=/tmp/eval_review_screenshot.png file:///tmp/eval_review_rendered.html >/dev/null 2>&1
