@@ -5,6 +5,11 @@
 ### New
 
 - **Automated Unit Tests**: Added the repo's first automated pytest suite (`skills/skill-maker/tests/`), covering `parse_frontmatter`, the `validate_skill`/`body_warnings` error paths, and the packaging-exclusion predicates. Dev-only dependency declared in `requirements-dev.txt`.
+- **Project run skill**: Added `.claude/skills/run-skill-maker/` — a smoke driver covering the validator, packager, test suite, and eval-review UI (with automated placeholder rendering and headless-Chrome screenshots).
+
+### Improvements
+
+- **Trimmed SKILL.md description**: Removed a residual identity clause from the triggering `description` and deduplicated the "read this when" conditions between the Steps and the Bundled resources catalog.
 
 ### Housekeeping
 

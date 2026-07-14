@@ -1,6 +1,6 @@
 ---
 name: skill-maker
-description: Use this skill whenever the user wants to author a skill from scratch, turn a workflow or repeated task into a reusable skill, edit or refactor an existing skill, make a skill spec-compliant or portable, test or benchmark a skill, or optimize a skill description for better triggering, following the open agentskills.io standard for cross-platform portability, even if they do not say the word "skill" explicitly.
+description: Use this skill whenever the user wants to author a skill from scratch, turn a workflow or repeated task into a reusable skill, edit or refactor an existing skill, make a skill spec-compliant or portable, test or benchmark a skill, or optimize a skill description for better triggering, even if they do not say the word "skill" explicitly.
 license: Apache-2.0
 compatibility: Portable across any skills-compatible agent that reads the agentskills.io format. Bundled validation and packaging scripts require Python 3.8+ and PyYAML.
 metadata:
@@ -216,8 +216,8 @@ Read these on demand; they are deliberately kept out of `SKILL.md` to honor the 
 budget.
 
 References:
-- `references/spec-reference.md` - exact agentskills.io frontmatter schema, naming rules, file structure, and the portable-vs-platform-locked distinction. Read before writing frontmatter.
-- `references/authoring-guide.md` - skill anatomy, progressive disclosure, writing patterns and style, and the full do's and don'ts. Read before writing the body.
+- `references/spec-reference.md` - exact agentskills.io frontmatter schema, naming rules, file structure, and the portable-vs-platform-locked distinction.
+- `references/authoring-guide.md` - skill anatomy, progressive disclosure, writing patterns and style, and the full do's and don'ts.
 - `references/evaluation.md` - the full test, grade, benchmark, review, and improve workflow.
 - `references/description-optimization.md` - the eval-driven method for tuning triggering.
 - `references/environment-adaptations.md` - capability-based adaptations for runtimes lacking subagents, a display, or a packaging tool.

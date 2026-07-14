@@ -197,6 +197,13 @@ Per-repo configuration consumed by generic engineering skills (issue-filing, tri
 
 Pointed to from `AGENTS.md`'s "Agent skills" section.
 
+### 3.7 .claude/skills/run-skill-maker/ — Project Run Skill
+
+Dev tooling for driving this repo's runnable surfaces, not shipped with the skill:
+- `smoke.sh` — one-command smoke driver: validator (pass + broken-fixture reject), pytest, packaging with zip-content assertions, eval-review UI render, headless-Chrome screenshot.
+- `render_review.py` — fills `assets/eval_review.html`'s three placeholders from `SKILL.md` frontmatter and `evals/trigger_queries.json`.
+- `SKILL.md` — agent-facing instructions; auto-loads for "run/test/screenshot skill-maker" requests in Claude Code.
+
 ---
 
 ## 4. Architectural Layers and Dependencies

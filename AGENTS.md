@@ -16,6 +16,7 @@ This repo is a workspace. The deliverable skill is self-contained under `skills/
 - `.agents/` is the local home for reusable agent assets that should not live in the platform bootstrap files.
   Skills used across repositories live in the user-global `~/.agent/skills/` directory, not in this repo.
 - `docs/agents/` holds this repo's Agent skills configuration (issue tracker, domain docs) — see the "Agent skills" section below.
+- `.claude/skills/run-skill-maker/` is the project run skill: a smoke driver (`smoke.sh`) exercising the validator, packager, tests, and eval-review UI. Dev tooling, not shipped.
 
 ## Working rules
 
