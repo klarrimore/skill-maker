@@ -25,6 +25,7 @@ This repo is a workspace. The deliverable skill is self-contained under `skills/
 - Prefer progressive disclosure. Put detail in `references/` and tell the agent exactly when to load it.
 - Keep `SKILL.md` short; move repeated logic into `scripts/` and reusable prompt material into `.agents/`.
 - Keep broader guidance in `AGENTS.md`; keep canonical reusable instruction content in `.agents/instructions/`.
+- The description in `SKILL.md` should ideally be fewer than 256 characters, be 512 characters on average, and a hard limit of 1024.
 
 ## Canonical instruction documents
 
