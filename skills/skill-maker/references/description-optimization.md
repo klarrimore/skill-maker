@@ -24,7 +24,7 @@ the agent decides whether to consult it from that text alone. Two consequences:
 - Imperative phrasing. "Use this skill when..." rather than "This skill does...".
 - Focus on user intent, not implementation.
 - Be pushy: enumerate applicable contexts, including indirect ones.
-- Stay concise. The hard limit is 1024 characters; do not approach it by keyword-stuffing.
+- Stay concise. The hard limit is 1024 characters; aim for 256 characters, be very frugal over 512 characters, and do not approach it by keyword-stuffing.
 
 Before and after:
 
