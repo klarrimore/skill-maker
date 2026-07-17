@@ -1,5 +1,11 @@
 # Changelog - skill-maker
 
+## July 17, 2026
+
+### Housekeeping
+
+- **Tests converted to stdlib `unittest`**: Rewrote `tests/test_utils.py` and `tests/test_quick_validate.py` off pytest and removed `requirements-dev.txt`. The suite now runs under the skill's own PyYAML-only contract (`python -m unittest discover -s tests -t .`), so the "Python 3.8+ and PyYAML, nothing else" promise holds even when the skill folder is uploaded detached from its repo root. Docs and the `run-skill-maker` smoke driver updated to match. Bumped to v1.3.
+
 ## July 15, 2026
 
 ### New

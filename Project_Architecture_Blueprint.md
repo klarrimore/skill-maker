@@ -177,9 +177,10 @@ parse_frontmatter(content) -> (frontmatter: dict, body: str)  # utils.py, raises
 `validate_skill` and `body_warnings` import `parse_frontmatter` from `utils.py` — one frontmatter
 parse, two callers. No external dependencies beyond Python 3.8+ and PyYAML.
 
-`tests/` holds pytest unit tests against `parse_frontmatter` (dev-only; excluded from packaging
-the same way `evals/` is). Requires `../../requirements-dev.txt` (pytest), not the skill's own
-`requirements.txt`.
+`tests/` holds stdlib `unittest` unit tests against `parse_frontmatter` (dev-only; excluded from
+packaging the same way `evals/` is). No third-party test dependency — they run under the skill's
+own `requirements.txt` (PyYAML only), so the "Python 3.8+ and PyYAML, nothing else" contract holds
+even when the folder is detached from the repo.
 
 ### 3.4 assets/ — Output Templates
 
@@ -200,7 +201,7 @@ Pointed to from `AGENTS.md`'s "Agent skills" section.
 ### 3.7 .claude/skills/run-skill-maker/ — Project Run Skill
 
 Dev tooling for driving this repo's runnable surfaces, not shipped with the skill:
-- `smoke.sh` — one-command smoke driver: validator (pass + broken-fixture reject), pytest, packaging with zip-content assertions, eval-review UI render, headless-Chrome screenshot.
+- `smoke.sh` — one-command smoke driver: validator (pass + broken-fixture reject), unittest suite, packaging with zip-content assertions, eval-review UI render, headless-Chrome screenshot.
 - `render_review.py` — fills `assets/eval_review.html`'s three placeholders from `SKILL.md` frontmatter and `evals/trigger_queries.json`.
 - `SKILL.md` — agent-facing instructions; auto-loads for "run/test/screenshot skill-maker" requests in Claude Code.
 
@@ -361,7 +362,7 @@ tests/                   # dev-only, excluded from packaging like evals/
 ### Dependencies
 
 - **Runtime:** Python 3.8+, PyYAML
-- **Dev:** pytest (`requirements-dev.txt` at the repo root — not the skill's own `requirements.txt`, which stays runtime-only)
+- **Dev:** none beyond runtime — the unit tests use the stdlib `unittest` module, so no separate test dependency is declared
 
 ---
 
@@ -386,11 +387,10 @@ behavior, rather than automated assertions:
 
 ### Automated Unit Tests (scripts/)
 
-`tests/test_utils.py` covers `parse_frontmatter` with pytest: the success path plus every
-`ValueError` case (missing opening/closing delimiter, invalid YAML, non-mapping frontmatter).
-Dev-only — install with `pip install -r requirements-dev.txt` from the repo root, run with
-`python -m pytest tests/` from `skills/skill-maker/`. Excluded from the packaged `.skill` the
-same way `evals/` is.
+`tests/test_utils.py` covers `parse_frontmatter` with stdlib `unittest`: the success path plus
+every `ValueError` case (missing opening/closing delimiter, invalid YAML, non-mapping frontmatter).
+Dev-only, no third-party dependency — run with `python -m unittest discover -s tests -t .` from
+`skills/skill-maker/`. Excluded from the packaged `.skill` the same way `evals/` is.
 
 This deterministic layer (scripts/) is unit-tested; the instructed-behavior layer (SKILL.md,
 references/) stays eval-based — the two are different kinds of correctness and don't share a
@@ -398,8 +398,8 @@ testing strategy.
 
 ### No CI
 
-No GitHub Actions or other CI configuration runs these tests automatically; `python -m pytest
-tests/` is a manual step today.
+No GitHub Actions or other CI configuration runs these tests automatically;
+`python -m unittest discover -s tests -t .` is a manual step today.
 
 ---
 

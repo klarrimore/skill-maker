@@ -7,7 +7,7 @@ metadata:
   author: klarrimore
   standard: agentskills.io
   spec-revision: "2025-12-18"
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Skill Maker

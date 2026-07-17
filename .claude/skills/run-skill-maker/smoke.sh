@@ -23,9 +23,9 @@ check "validate: skill-maker is spec-valid" 0 $?
 python3 -m scripts.quick_validate evals/files/broken-skill >/dev/null 2>&1
 check "validate: broken fixture rejected" 1 $?
 
-# 3. Unit tests
-python3 -m pytest tests/ -q >/dev/null 2>&1
-check "pytest: tests/ suite passes" 0 $?
+# 3. Unit tests (stdlib unittest, no third-party deps)
+python3 -m unittest discover -s tests -t . >/dev/null 2>&1
+check "unittest: tests/ suite passes" 0 $?
 
 # 4. Direct invocation: the internal functions import and run without the CLI
 python3 - <<'EOF' >/dev/null 2>&1
