@@ -12,7 +12,7 @@ audit's sampling strategies), confirm or add modes, and mark each covered/gap ho
 | ID | Failure mode | Caught by |
 | --- | --- | --- |
 | FM-1 | Emits platform-locked frontmatter — a client-specific field (`context`, `model`, `user-invocable`, scripts sidecar) instead of the six standard fields | Eval 1 (recognized-fields assertion); `grade_artifacts.py` |
-| FM-2 | Spec-invalid frontmatter — non-kebab name, name ≠ directory, description over 1024 chars or with angle brackets | Eval 1, Eval 2; `grade_artifacts.py`; `quick_validate` |
+| FM-2 | Invalid frontmatter — non-lowercase/kebab name, name ≠ directory, or description over 1024 chars (spec violations); plus angle brackets, which the bundled validator rejects as a skill-maker hardening measure (the spec is silent and `skills-ref` does not check them) | Eval 1, Eval 2; `grade_artifacts.py`; `quick_validate` |
 | FM-3 | Bloats `SKILL.md` with depth that belongs in `references/` instead of disclosing it behind a read-this-when pointer | Eval 1 (body-budget assertion) |
 | FM-4 | Skips validation before handoff | Eval 1 (runs validator), Eval 4 (re-validates) |
 | FM-5 | Invents a generic procedure from general knowledge ("handle errors appropriately") instead of extracting real expertise | Eval 1 (task-specific guidance assertion) — **partial** |

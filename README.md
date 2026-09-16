@@ -5,8 +5,10 @@ Agent Skill that helps create, improve, evaluate, and validate other Agent Skill
 to the open [agentskills.io](https://agentskills.io) standard.
 
 The deliverable skill lives in `skills/skill-maker/` and is self-contained: its `SKILL.md`,
-`references/`, `scripts/`, `assets/`, and `LICENSE.txt` are everything that ships. Build
-tooling and repo configuration live at the repository root and are not part of the skill.
+`requirements.txt`, `references/`, `scripts/`, `assets/`, and `LICENSE.txt` are everything
+that ships. The `tests/` and `evals/` directories are kept in source control but excluded
+from the packaged `.skill`. Build tooling and repo configuration live at the repository
+root and are not part of the skill.
 
 ## Quick start
 
@@ -31,9 +33,12 @@ skill-maker/                         repository (workspace)
   skills/
     skill-maker/                     the deliverable skill (self-contained)
       SKILL.md                       skill entry point
+      requirements.txt               PyYAML, for the bundled scripts
       references/                    loaded on demand
         spec-reference.md
+        spec-provenance.md
         authoring-guide.md
+        scripts.md
         evaluation.md
         description-optimization.md
         environment-adaptations.md
@@ -42,16 +47,23 @@ skill-maker/                         repository (workspace)
         quick_validate.py            zero-network spec validator
         package_skill.py             validate then zip into a .skill
         utils.py                     shared SKILL.md parsing helper
-      assets/                        templates (the review-view template)
+      assets/
+        eval_review.html             review-view template
       LICENSE.txt                    Apache-2.0
-      tests/  evals/                 dev-only; kept in source control, excluded from the .skill
+      tests/                         dev-only; kept in source control, excluded from the .skill
+      evals/                         dev-only; task evals, trigger queries, grader, fixtures
+        grade_artifacts.py           code-check grader, emits grading.json
+        failure-modes.md             FM-1…FM-13 error-analysis catalogue
   docs/                              dev config, not shipped
     agents/                          issue tracker, triage labels, domain docs
     research/                        primary-source investigations
-  .agents/instructions/              canonical reusable instruction documents
+  .agents/                           canonical reusable instruction documents
+    instructions/
+    *.instructions.md
   scripts/                           dev tooling: smoke driver (smoke.sh) and review-UI renderer (render_review.py)
   AGENTS.md                          repo-wide agent guidance (dev config, not shipped)
-  CLAUDE.md  .github/                client bootstrap files (dev config, not shipped)
+  CLAUDE.md                          Claude Code bootstrap (routes to AGENTS.md)
+  .github/                           copilot-instructions.md and instructions/ (client bootstrap)
   CHANGELOG.md
   README.md  .gitignore
 ```
@@ -61,7 +73,7 @@ skill-maker/                         repository (workspace)
 Run from the target skill's directory, where its `scripts/` package lives:
 
 ```bash
-skills-ref validate .                 # canonical validator, if installed
+skills-ref validate .                 # reference validator, if installed
 python -m scripts.quick_validate .    # bundled fallback
 python -m scripts.package_skill . ../../dist
 ```
@@ -73,7 +85,7 @@ The evaluation and description-optimization loops are run by hand; see
 ## Install and use the skill
 
 Place the `skills/skill-maker/` directory where your agent looks for skills, such as
-`~/.agent/skills/skill-maker/` for a user-global install.
+`~/.agents/skills/skill-maker/` for a user-global install.
 
 ## License
 

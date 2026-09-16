@@ -8,7 +8,7 @@
       "files": [],
       "expectations": [
         "Produces a skill directory containing a SKILL.md file",
-        "The frontmatter name is kebab-case (lowercase letters, digits, and hyphens only; no leading, trailing, or consecutive hyphen), is 1-64 characters, and exactly matches the skill directory name",
+        "The frontmatter name is lowercase alphanumeric (Unicode lowercase letters allowed) with hyphens only, has no leading, trailing, or consecutive hyphen, is 1-64 characters, and exactly matches the skill directory name",
         "The frontmatter uses only the recognized fields (name, description, license, compatibility, metadata, allowed-tools) and introduces no client-specific extension",
         "The description states both what the skill does and when to use it, is 1024 characters or fewer, and contains no angle brackets",
         "The SKILL.md body is written as imperative instructions (steps beginning with a verb), not as a description of the skill",
@@ -26,7 +26,7 @@
       "expectations": [
         "Copies the read-only fixture to a writable path before editing it, and does not modify evals/files/broken-skill/SKILL.md in place",
         "Identifies that the name 'Weekly_Log_Summary' is not kebab-case and does not match the directory name",
-        "Identifies that the description contains angle brackets, which are disallowed",
+        "Identifies that the description contains angle brackets, which the bundled validator rejects as a skill-maker hardening measure (the spec is silent and skills-ref does not check them)",
         "Identifies that 'author' and 'version' are not recognized top-level frontmatter fields and belong under metadata",
         "Fixes every identified violation so the frontmatter uses only the recognized fields with a kebab-case name matching the directory and a bracket-free description",
         "Re-runs the validator (skills-ref validate or python -m scripts.quick_validate) and reports that the skill now validates"
@@ -49,7 +49,7 @@
     },
     {
       "id": 4,
-      "prompt": "I have an installed skill called `standup-summary` that I want to improve. Its instructions are thin and it misses the on-call rotation summary entirely. The install is read-only under ~/.agent/skills/standup-summary. Can you improve it and hand me back the updated folder?",
+      "prompt": "I have an installed skill called `standup-summary` that I want to improve. Its instructions are thin and it misses the on-call rotation summary entirely. The install is read-only under ~/.agents/skills/standup-summary. Can you improve it and hand me back the updated folder?",
       "expected_output": "A writable copy of the skill is made before editing, the skill keeps its name and directory name `standup-summary`, the body is improved to cover the missing on-call rotation summary, and the result is re-validated.",
       "files": ["evals/files/standup-summary/SKILL.md"],
       "expectations": [

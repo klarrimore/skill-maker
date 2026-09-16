@@ -31,6 +31,32 @@ class TestParseFrontmatter(unittest.TestCase):
         self.assertEqual(frontmatter, {"name": "my-skill"})
         self.assertEqual(body, "")
 
+    def test_empty_frontmatter_block_is_not_a_mapping(self):
+        # `yaml.safe_load("")` returns None, which is not a dict.
+        with self.assertRaisesRegex(ValueError, "Frontmatter must be a YAML dictionary"):
+            parse_frontmatter("---\n\n---\nBody.\n")
+
+    def test_body_may_itself_contain_a_triple_dash(self):
+        # The DOTALL regex is non-greedy on the frontmatter, so a `---` in the
+        # body is kept in the body rather than closing the block early.
+        content = "---\nname: my-skill\n---\nIntro.\n\n---\n\nMore body.\n"
+        frontmatter, body = parse_frontmatter(content)
+        self.assertEqual(frontmatter, {"name": "my-skill"})
+        self.assertIn("More body.", body)
+        self.assertTrue(body.startswith("Intro."))
+
+    def test_missing_trailing_newline_after_closing_delimiter(self):
+        # The closing `\n?` after `---` is optional: no body, no trailing newline.
+        frontmatter, body = parse_frontmatter("---\nname: my-skill\n---")
+        self.assertEqual(frontmatter, {"name": "my-skill"})
+        self.assertEqual(body, "")
+
+    def test_multiline_scalar_body_preserved_verbatim(self):
+        frontmatter, body = parse_frontmatter(
+            "---\nname: my-skill\ndescription: Does a thing.\n---\nline1\nline2\n"
+        )
+        self.assertEqual(body, "line1\nline2\n")
+
 
 if __name__ == "__main__":
     unittest.main()

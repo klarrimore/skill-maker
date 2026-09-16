@@ -1,5 +1,62 @@
 # Changelog - skill-maker
 
+## [1.5.0] - 2026-09-17
+
+### Added
+
+- Added `references/spec-provenance.md`: the authority tiers for any rule, the spec-vs-`skills-ref` divergences, and how spec versioning works
+- Added `references/scripts.md`: writing and bundling scripts in depth (choosing a one-off command, inline dependencies, and agent-friendly design)
+- Documented the two new references in the `SKILL.md` bundled-resources catalog and the `README.md` layout tree
+
+### Changed
+
+- Reframed the angle-bracket rule: the spec is silent, `skills-ref` does not check it, and the bundled validator rejects it only as a hardening measure
+- Described the bundled validator as checking the spec constraints plus hardening checks (angle brackets) and soft body-budget warnings, so it is stricter than the spec
+- Softened the validator wording to "reference validator" and labeled it a demonstration library, not a production SDK
+- Recorded the Unicode `name` charset nuance and the spec-vs-validator field framing
+- Dropped the unverified singular user-scope path; standardized on the plural `~/.agents/skills/` as the cross-client user scope
+- Bumped skill-maker to v1.5
+
+### Fixed
+
+- Removed the unverified `metadata.spec-revision` key from the `SKILL.md` frontmatter
+- Corrected the `README.md` install path and validator wording
+- Added validator-precision notes: `skills-ref` enforces only the `compatibility` upper bound and does not type-check `allowed-tools`
+
+## [1.4.0] - 2026-09-17
+
+### Added
+
+- Added an error-analysis catalogue (`evals/failure-modes.md`) mapping failure modes `FM-1`…`FM-13` to the evals that catch them
+- Added three task evals covering an installed-skill improvement, a safety-violating skill, and a user who skips the eval loop
+- Added a valid `standup-summary` eval fixture
+- Added a code-check grader (`evals/grade_artifacts.py`) that emits `grading.json` for the objectively verifiable expectations
+- Documented the `trigger_results.json` schema for a description-optimization run
+- Set a description length budget: 256-character target, 512-character working ceiling, 1024-character hard limit
+- Added the triage label vocabulary (`docs/agents/triage-labels.md`)
+- Added a primary-source investigation of the agentskills.io spec and best practices (`docs/research/`)
+- Added `scripts/README.md`, replacing the removed project run skill
+
+### Changed
+
+- Reconciled the description-length wording across `SKILL.md` and the `references/` docs
+- Replaced fuzzy eval assertions with observables, and swapped obviously-irrelevant should-not-trigger queries for near-misses
+- Exposed `ALLOWED_PROPERTIES` in `scripts/quick_validate.py` so the grader reuses the validator's field set
+- Moved the smoke driver and review-UI renderer from `.claude/skills/run-skill-maker/` to repo-root `scripts/`
+- Extended `smoke.sh` with fixture-integrity and grader-agreement checks
+- Bumped skill-maker to v1.4
+
+### Fixed
+
+- Fixed the grader kebab-case check to reject leading, trailing, and consecutive hyphens
+- Fixed the grader to fail missing descriptions on the length and angle-bracket checks
+- Replaced stale line-number citations in the research doc with section references
+
+### Removed
+
+- Removed the Claude-specific project run skill and the now-empty `.claude/` tree
+- Removed the stale generated `Project_Architecture_Blueprint.md`
+
 ## September 17, 2026
 
 ### New
@@ -71,3 +128,6 @@
 ### Housekeeping
 
 - Removed an installed skill that was checked in by mistake.
+
+[1.5.0]: https://github.com/klarrimore/skill-maker/compare/v1.4...v1.5
+[1.4.0]: https://github.com/klarrimore/skill-maker/compare/v1.3...v1.4

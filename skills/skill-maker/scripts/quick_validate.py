@@ -2,14 +2,16 @@
 """
 Quick validation script for skills - zero-network spec checker.
 
-Fallback for the canonical validator `skills-ref validate ./your-skill`. Enforces the
-agentskills.io frontmatter constraints and emits soft warnings on the SKILL.md body
-budget. Keeps the validate_skill(skill_path) -> (bool, message) contract that
-package_skill.py imports.
+Fallback for the reference validator `skills-ref validate ./your-skill` (the standard's
+reference/demonstration library, not a production SDK). Enforces the agentskills.io
+frontmatter constraints and emits soft warnings on the SKILL.md body budget. As a
+skill-maker hardening measure it also rejects angle brackets in the description; the
+spec is silent on them and `skills-ref` does not check them. Keeps the
+validate_skill(skill_path) -> (bool, message) contract that package_skill.py imports.
 """
 
 import sys
-import re
+import unicodedata
 from pathlib import Path
 
 from scripts.utils import parse_frontmatter
@@ -26,8 +28,22 @@ BODY_LINE_BUDGET = 500
 BODY_TOKEN_BUDGET = 5000  # approximated as chars / 4
 
 # The six recognized agentskills.io frontmatter fields. Anything else is a
-# client-specific extension and breaks portability.
+# client-specific extension: still spec-conformant, but it breaks portability.
 ALLOWED_PROPERTIES = {'name', 'description', 'license', 'allowed-tools', 'metadata', 'compatibility'}
+
+
+def name_violation(name):
+    """Return the first name-rule violation, or None if `name` is valid."""
+    normalized = unicodedata.normalize('NFKC', name)
+    if normalized != normalized.lower() or not all(
+        ch.isalnum() or ch == '-' for ch in normalized
+    ):
+        return f"Name '{name}' should be kebab-case (lowercase letters, digits, and hyphens only)"
+    if normalized.startswith('-') or normalized.endswith('-') or '--' in normalized:
+        return f"Name '{name}' cannot start/end with hyphen or contain consecutive hyphens"
+    if len(normalized) > 64:
+        return f"Name is too long ({len(normalized)} characters). Maximum is 64 characters."
+    return None
 
 
 def _counts_as_skill_md(rel_path):
@@ -87,7 +103,8 @@ def validate_skill(skill_path):
         return False, (
             f"Unexpected key(s) in SKILL.md frontmatter: {', '.join(sorted(unexpected_keys))}. "
             f"Allowed properties are: {', '.join(sorted(ALLOWED_PROPERTIES))}. "
-            f"Nonstandard fields are not portable; put environment needs in 'compatibility'."
+            f"Fields outside the standard are spec-conformant but not portable; "
+            f"put environment needs in 'compatibility'."
         )
 
     # Check required fields
@@ -102,17 +119,12 @@ def validate_skill(skill_path):
         return False, f"Name must be a string, got {type(name).__name__}"
     name = name.strip()
     if name:
-        # Check naming convention (kebab-case: lowercase with hyphens)
-        if not re.match(r'^[a-z0-9-]+$', name):
-            return False, f"Name '{name}' should be kebab-case (lowercase letters, digits, and hyphens only)"
-        if name.startswith('-') or name.endswith('-') or '--' in name:
-            return False, f"Name '{name}' cannot start/end with hyphen or contain consecutive hyphens"
-        # Check name length (max 64 characters per spec)
-        if len(name) > 64:
-            return False, f"Name is too long ({len(name)} characters). Maximum is 64 characters."
+        violation = name_violation(name)
+        if violation:
+            return False, violation
         # Name must match the parent directory name (spec requirement)
         dir_name = skill_path.name
-        if dir_name and name != dir_name:
+        if dir_name and unicodedata.normalize('NFKC', name) != unicodedata.normalize('NFKC', dir_name):
             return False, (
                 f"Name '{name}' must match the parent directory name '{dir_name}'. "
                 f"Rename the directory or the 'name' field so they are identical."
@@ -125,7 +137,8 @@ def validate_skill(skill_path):
     description = description.strip()
     if not description:
         return False, "Description must be non-empty."
-    # Check for angle brackets
+    # Reject angle brackets as a skill-maker hardening measure: the spec is
+    # silent on them and the reference validator does not check them.
     if '<' in description or '>' in description:
         return False, "Description cannot contain angle brackets (< or >)"
     # Check description length (max 1024 characters per spec)
@@ -194,5 +207,6 @@ if __name__ == "__main__":
     if valid:
         for w in body_warnings(target):
             print(f"  warning: {w}")
-        print("  note: for the canonical check, also run: skills-ref validate " + target)
+        print("  note: for the reference check, also run: skills-ref validate " + target)
+        print("  note: skills-ref is the standard's reference/demonstration library, not a production SDK")
     sys.exit(0 if valid else 1)

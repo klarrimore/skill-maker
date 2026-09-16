@@ -14,7 +14,6 @@ from the packaged `.skill`.
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -24,11 +23,10 @@ sys.path.insert(0, str(SKILL_ROOT))
 from scripts.quick_validate import (  # noqa: E402
     ALLOWED_PROPERTIES,
     body_warnings,
+    name_violation,
     validate_skill,
 )
 from scripts.utils import parse_frontmatter  # noqa: E402
-
-KEBAB = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 def _check(text, passed, evidence):
@@ -61,7 +59,7 @@ def grade(skill_dir):
     dir_name = skill_dir.name
     results.append(_check(
         "Frontmatter name is kebab-case with no leading/trailing/consecutive hyphen",
-        bool(KEBAB.match(name)),
+        bool(name) and name_violation(name) is None,
         f"name={name!r}",
     ))
     results.append(_check(
@@ -77,7 +75,7 @@ def grade(skill_dir):
         f"length={len(description)}" if description else "missing description",
     ))
     results.append(_check(
-        "Description contains no angle brackets",
+        "Description contains no angle brackets (skill-maker hardening)",
         bool(description) and "<" not in description and ">" not in description,
         "clean" if description and "<" not in description and ">" not in description
         else ("missing description" if not description
@@ -86,7 +84,7 @@ def grade(skill_dir):
 
     extra = sorted(set(frontmatter.keys()) - ALLOWED_PROPERTIES)
     results.append(_check(
-        "Frontmatter uses only recognized fields (no client-specific extension)",
+        "Frontmatter uses only recognized fields (client extensions are spec-conformant but non-portable)",
         not extra,
         f"unexpected={extra}" if extra else "no extra fields",
     ))

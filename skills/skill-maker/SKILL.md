@@ -6,8 +6,7 @@ compatibility: Portable across any skills-compatible agent that reads the agents
 metadata:
   author: klarrimore
   standard: agentskills.io
-  spec-revision: "2025-12-18"
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Skill Maker
@@ -96,7 +95,9 @@ The two fields that matter most:
   to use it, including contexts where the user does not name the domain directly. Agents
   tend to under-trigger, so make it a little pushy: list the cases, "even if they do not
   explicitly mention X". Aim for 256 characters or fewer, treat 512 as the working
-  ceiling, and never approach the 1024 hard limit. No angle brackets.
+  ceiling, and never approach the 1024 hard limit. The spec is silent on `<`/`>` and
+  `skills-ref` does not check them; the bundled validator rejects them as hardening,
+  since some clients may sanitize markup.
 
 Then write the body: the actual instructions, in the imperative, explaining the why
 behind each step rather than stacking rigid ALWAYS/NEVER rules. Keep `SKILL.md` under
@@ -141,16 +142,17 @@ default and needs no special tooling.
 
 ### Step 7: Validate against the spec
 
-Before handing the skill back, validate it. The canonical validator from the standard is
-the reference library:
+Before handing the skill back, validate it. The standard's reference validator (a
+demonstration library, not a production SDK):
 
 ```bash
 skills-ref validate ./skill-maker
 ```
 
-If `skills-ref` is not installed, use the bundled zero-network validator, which checks
-the same spec constraints (frontmatter fields, the 64/1024/500 character limits, kebab
-naming, name-matches-directory) plus soft warnings on body length:
+If `skills-ref` is not installed, use the bundled zero-network validator. It checks the
+spec constraints (frontmatter fields, the 64/1024/500 character limits, kebab naming,
+name-matches-directory) plus hardening checks the spec does not require (rejecting
+angle brackets) and soft warnings on body length, so it is stricter than the spec:
 
 ```bash
 python -m scripts.quick_validate ./skill-maker
@@ -161,12 +163,11 @@ Fix anything it flags before distributing.
 ### Step 8: Distribute
 
 A skill is just a folder, and the folder is the unit of distribution. Place it where the
-target agent looks. In this workspace, reusable skills live under
-`~/.agent/skills/<name>/` for user-global installs. For cross-client portability, many
-clients also read `.agents/skills/<name>/` (project scope), `~/.agents/skills/<name>/`
-(user scope), or a client-specific `.<client>/skills/` directory. Project scope
-overrides user scope on a name collision. Source control the folder when it is meant to
-travel with a project; otherwise keep reusable personal skills in the user-global path.
+target agent looks. For cross-client portability, many clients read `.agents/skills/<name>/`
+(project scope), `~/.agents/skills/<name>/` (user scope), or a client-specific
+`.<client>/skills/` directory. Project scope overrides user scope on a name collision.
+Source control the folder when it is meant to travel with a project; otherwise keep
+reusable personal skills in the user-scope path.
 
 Some hosts (a hosted skills app or a skills API) additionally accept a zipped `.skill` upload. If
 your client can surface a file to the user and they want a downloadable artifact, package
@@ -218,7 +219,9 @@ budget.
 
 References:
 - `references/spec-reference.md` - exact agentskills.io frontmatter schema, naming rules, file structure, and the portable-vs-platform-locked distinction.
+- `references/spec-provenance.md` - which rules are spec-mandated, documented, or de-facto, and where `skills-ref` diverges from the spec.
 - `references/authoring-guide.md` - skill anatomy, progressive disclosure, writing patterns and style, and the full do's and don'ts.
+- `references/scripts.md` - writing and bundling scripts: one-off commands, inline dependencies, and agent-friendly design.
 - `references/evaluation.md` - the full test, grade, benchmark, review, and improve workflow.
 - `references/description-optimization.md` - the eval-driven method for tuning triggering.
 - `references/environment-adaptations.md` - capability-based adaptations for runtimes lacking subagents, a display, or a packaging tool.

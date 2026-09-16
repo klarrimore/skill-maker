@@ -13,7 +13,9 @@ Two trees inside the skill are dev-only — `tests/` and `evals/` — kept in so
 The skill's own references are the authority on authoring; reach for them instead of restating the rules here:
 
 - `skills/skill-maker/references/spec-reference.md` — before touching frontmatter: the field-by-field schema, naming rules, character limits (including the description-length budget), and the portable-vs-platform-locked line.
+- `skills/skill-maker/references/spec-provenance.md` — when a rule's authority matters: what is spec-mandated, documented, or de-facto, and the spec-vs-`skills-ref` divergences.
 - `skills/skill-maker/references/authoring-guide.md` — before writing the body: anatomy, progressive disclosure, style, and the do's and don'ts.
+- `skills/skill-maker/references/scripts.md` — before writing a bundled script: one-off commands, self-contained dependencies, and agent-friendly design.
 - `skills/skill-maker/references/description-optimization.md` — when tuning the `description` for triggering: the eval-driven method.
 
 ## Verifying changes
