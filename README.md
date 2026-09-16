@@ -58,7 +58,8 @@ skill-maker/                         repository (workspace)
         evals.json                   task-eval definitions
         trigger_queries.json         should- and should-not-trigger cases
         grade_artifacts.py           code-check grader, emits grading.json
-        failure-modes.md             FM-1…FM-13 error-analysis catalogue
+        failure-modes.md             FM-1 through FM-14 error-analysis catalogue
+        judges/                      seed LLM-as-judge prompts for subjective self-improvement checks
         files/                       valid and broken skill fixtures
   docs/                              dev config, not shipped
     agents/                          issue tracker, triage labels, domain docs

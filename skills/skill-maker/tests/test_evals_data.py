@@ -87,6 +87,34 @@ class TestTriggerQueries(unittest.TestCase):
         self.assertEqual(len(texts), len(set(texts)))
 
 
+class TestJudgePrompts(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.prompts = sorted((EVALS_DIR / "judges").glob("*.md"))
+
+    def test_judge_prompt_files_exist(self):
+        self.assertGreaterEqual(len(self.prompts), 1)
+
+    def test_each_judge_prompt_has_required_components(self):
+        for path in self.prompts:
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(path=path.name):
+                for heading in (
+                    "## Task and Evaluation Criterion",
+                    "## Definitions",
+                    "## Examples",
+                    "## Structured Output Format",
+                ):
+                    self.assertIn(heading, text)
+                self.assertIn("PASS:", text)
+                self.assertIn("FAIL:", text)
+                self.assertIn("Result: Pass", text)
+                self.assertIn("Result: Fail", text)
+                self.assertIn("borderline", text.lower())
+                self.assertIn('"critique"', text)
+                self.assertIn('"result"', text)
+
+
 class TestFixtureBehavior(unittest.TestCase):
     """The fixtures must keep behaving as their evals assume."""
 

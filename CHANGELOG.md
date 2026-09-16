@@ -1,5 +1,18 @@
 # Changelog - skill-maker
 
+## [1.7.0] - 2026-09-17
+
+### Added
+
+- Added seed LLM-as-judge prompts for subjective self-improvement evals: one for overfitting to known eval cases and one for unscoped edits that damage unrelated behavior
+- Added eval data tests that enforce the required judge-prompt structure
+
+### Changed
+
+- Mapped `FM-10` to the overfitting judge and added `FM-14` for scoped self-improvement failures
+- Documented the `evals/judges/` directory in the eval README and repository layout
+- Bumped skill-maker to v1.7
+
 ## [1.6.0] - 2026-09-17
 
 ### Added
@@ -148,6 +161,7 @@
 
 - Removed an installed skill that was checked in by mistake.
 
+[1.7.0]: https://github.com/klarrimore/skill-maker/compare/v1.6...v1.7
 [1.6.0]: https://github.com/klarrimore/skill-maker/compare/v1.5...v1.6
 [1.5.0]: https://github.com/klarrimore/skill-maker/compare/v1.4...v1.5
 [1.4.0]: https://github.com/klarrimore/skill-maker/compare/v1.3...v1.4

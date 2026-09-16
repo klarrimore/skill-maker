@@ -20,10 +20,11 @@ audit's sampling strategies), confirm or add modes, and mark each covered/gap ho
 | FM-7 | Overfits the description to the queries it was tuned on (no held-out selection) | Eval 3 (held-out selection assertion) |
 | FM-8 | Updates an installed skill by renaming it (`-v2`) or editing a read-only install in place | Eval 4 |
 | FM-9 | Ships a skill whose behavior surprises a description-only reader (hidden access or exfiltration behind a benign description) | Eval 5 |
-| FM-10 | Overfits the skill itself to the few test prompts with fiducial MUSTs | **Gap** — judged qualitatively per `references/evaluation.md` |
+| FM-10 | Overfits the skill itself to the few test prompts with fiducial MUSTs | Seed judge: `judges/self-improvement-overfitting.md`; judged qualitatively until calibrated |
 | FM-11 | Damages the eval suite itself: fixes the broken fixture in place, disarming the negative test | Eval 2 (copy-first assertion); `smoke.sh` fixture-integrity check |
 | FM-12 | Forces the eval loop on a user who declined it, instead of adapting | Eval 6 |
 | FM-13 | Ignores environment limits (no subagents, no display, no packager) and fails instead of substituting the manual path | **Gap** — process-verified only; `references/environment-adaptations.md` |
+| FM-14 | Self-improvement edits sprawl beyond the observed feedback, renaming, removing working behavior, or redesigning unrelated parts of the skill | Seed judge: `judges/self-improvement-scope.md`; judged qualitatively until calibrated |
 
 ## Keeping this current
 
@@ -32,4 +33,4 @@ audit's sampling strategies), confirm or add modes, and mark each covered/gap ho
 - When a new failure appears in a real session, add it here first, then add or sharpen the
   expectation that catches it. Evaluators follow error analysis, never the reverse.
 - Close the **Gap** rows when a mode becomes testable, or mark them permanently qualitative
-  (FM-10) rather than inventing a brittle assertion.
+  rather than inventing a brittle assertion.

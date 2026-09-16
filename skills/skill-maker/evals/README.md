@@ -11,9 +11,12 @@ They ship in source control, not in the distributable artifact.
 ## Files
 
 - `failure-modes.md` - the error-analysis record: the concrete ways skill-maker fails
-  (`FM-1` … `FM-13`) and which eval catches each. The expectations in `evals.json` are
+  (`FM-1` through `FM-14`) and which eval catches each. The expectations in `evals.json` are
   written against these modes, not borrowed generic qualities. Update this first when a new
   failure appears.
+- `judges/` - seed LLM-as-judge prompts for subjective self-improvement failures that are
+  not code-checkable. These are not calibrated; replace the examples with held-out-safe
+  human-labeled training traces before using them as benchmark judges.
 - `evals.json` - six task-execution evals, each mapped to modes in `failure-modes.md`:
   - id 1, create-from-workflow: turn a repeated task into a new, valid skill.
   - id 2, make-spec-compliant: fix and validate a read-only broken fixture.
@@ -54,6 +57,10 @@ python -m evals.grade_artifacts /path/to/produced-skill --out /path/to/grading.j
 
 Remaining expectations (the safety refusal, reporting the validator output to the user,
 the wording-quality judgments) are graded by hand from the transcript.
+
+Subjective self-improvement expectations can use the seed prompts in `judges/` after
+calibration against human-labeled traces. Keep each judge binary and scoped to one failure
+mode; if a check can be turned into a script or validator assertion, do that instead.
 
 ## Recording a run
 
