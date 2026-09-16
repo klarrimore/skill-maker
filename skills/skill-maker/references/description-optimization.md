@@ -24,7 +24,7 @@ the agent decides whether to consult it from that text alone. Two consequences:
 - Imperative phrasing. "Use this skill when..." rather than "This skill does...".
 - Focus on user intent, not implementation.
 - Be pushy: enumerate applicable contexts, including indirect ones.
-- Stay concise. The hard limit is 1024 characters; aim for 256 characters, be very frugal over 512 characters, and do not approach it by keyword-stuffing.
+- Stay concise. Aim for 256 characters or fewer and treat 512 as the working ceiling; 1024 is a hard limit, not a target. Do not approach it by keyword-stuffing.
 
 Before and after:
 
@@ -95,10 +95,12 @@ Run the loop by hand: for each candidate description, run each eval query yourse
 times, record whether the skill would trigger, compute the trigger rate against the
 threshold on the train split, revise, then confirm on the held-out split. Keep the candidate
 with the best held-out result. Use the model that powers the current session for the runs so
-the test matches what the user actually experiences.
+the test matches what the user actually experiences. Record the split, the per-query trigger
+rates, and the scores as `trigger_results.json` (schema in `schemas.md`) so the selection is
+auditable.
 
 ## Step 4: Apply the result
 
-Take the winning description, update the `SKILL.md` frontmatter, re-validate (the 1024
-character limit and no angle brackets still apply), and show the user the before and after
+Take the winning description, update the `SKILL.md` frontmatter, re-validate (the length
+budget and no angle brackets still apply), and show the user the before and after
 with the scores.

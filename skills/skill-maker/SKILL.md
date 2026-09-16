@@ -7,7 +7,7 @@ metadata:
   author: klarrimore
   standard: agentskills.io
   spec-revision: "2025-12-18"
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Skill Maker
@@ -95,7 +95,8 @@ The two fields that matter most:
   entire burden of getting the skill loaded, so state both what the skill does and when
   to use it, including contexts where the user does not name the domain directly. Agents
   tend to under-trigger, so make it a little pushy: list the cases, "even if they do not
-  explicitly mention X". Keep it under 1024 characters. No angle brackets.
+  explicitly mention X". Aim for 256 characters or fewer, treat 512 as the working
+  ceiling, and never approach the 1024 hard limit. No angle brackets.
 
 Then write the body: the actual instructions, in the imperative, explaining the why
 behind each step rather than stacking rigid ALWAYS/NEVER rules. Keep `SKILL.md` under

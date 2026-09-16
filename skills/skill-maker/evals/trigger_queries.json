@@ -11,13 +11,13 @@
   {"query": "check that the frontmatter in this SKILL.md is valid and spec-compliant before I share it with the team", "should_trigger": true},
 
   {"query": "what skills do I currently have installed, and which ones are enabled right now?", "should_trigger": false},
-  {"query": "write me a python script that scrapes product prices from a url and saves them to a csv", "should_trigger": false},
-  {"query": "create a new feature branch called fix-login and switch to it", "should_trigger": false},
   {"query": "validate this json payload against the openapi schema in api/spec.yaml", "should_trigger": false},
   {"query": "benchmark the p95 latency of our /search endpoint under 500 concurrent users", "should_trigger": false},
   {"query": "improve the meta description on our landing page so it ranks better on google", "should_trigger": false},
   {"query": "how do I install a plugin from a marketplace in claude code?", "should_trigger": false},
   {"query": "review my pull request and flag any bugs before I merge it", "should_trigger": false},
   {"query": "what's a good agent framework for building a customer-support bot?", "should_trigger": false},
-  {"query": "teach me how to improve my coding skills in rust - where should a beginner start?", "should_trigger": false}
+  {"query": "explain what the agentskills.io standard is and how it relates to MCP", "should_trigger": false},
+  {"query": "my AGENTS.md is getting bloated - can you split it into a few smaller files so it stays readable?", "should_trigger": false},
+  {"query": "set up a custom slash command that runs our test suite and posts the result to slack", "should_trigger": false}
 ]

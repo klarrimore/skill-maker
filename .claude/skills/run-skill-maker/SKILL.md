@@ -18,11 +18,12 @@ One command exercises every surface and exits non-zero on the first failure:
 bash .claude/skills/run-skill-maker/smoke.sh
 ```
 
-Checks: validator passes on the skill, rejects the broken fixture, unit tests pass,
-the internal functions import and run directly, packaging produces a `.skill` zip
-free of dev artifacts, the eval-review UI renders from real data, and (if
-`google-chrome` exists) a screenshot lands at `/tmp/eval_review_screenshot.png` —
-open that file to see the UI.
+Checks: validator passes on the skill, rejects the broken fixture (and confirms the fixture
+still carries its violations), accepts the valid `standup-summary` fixture, unit tests pass,
+the internal functions import and run directly, the eval grader passes on the skill and fails
+on the fixture, packaging produces a `.skill` zip free of dev artifacts, the eval-review UI
+renders from real data, and (if `google-chrome` exists) a screenshot lands at
+`/tmp/eval_review_screenshot.png` — open that file to see the UI.
 
 To render/screenshot the review UI alone:
 

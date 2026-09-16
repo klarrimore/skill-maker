@@ -80,15 +80,19 @@ hyphen).
 
 ## description rules
 
-- 1 to 1024 characters.
+- 1 to 1024 characters. The 1024 ceiling is a hard limit enforced by the validator, not a
+  target.
+- Aim for 256 characters or fewer, and treat 512 as the working ceiling. A description that
+  goes past 512 should earn every extra character: its length is paid on every skill the
+  agent weighs for a given task.
 - State both what the skill does and when to use it.
 - Include specific keywords that help an agent recognize relevant tasks.
 - The bundled validator also rejects angle brackets (`<`, `>`) for safety against markup
   injection into the system prompt; avoid them.
-- Stay clear of the 1024 ceiling. A description within about 5% of the limit (roughly 973+
-  characters) is a maintenance trap: the next trigger-phrase addition silently breaches it.
-  Re-check the length after every edit, not just at first authoring. An edit that grows the
-  description is the most common way a previously compliant skill goes over.
+- Do not approach the 1024 ceiling by keyword-stuffing. A description within about 5% of it
+  (roughly 973+ characters) is a maintenance trap: the next trigger-phrase addition silently
+  breaches it. Re-check the length after every edit, not just at first authoring. An edit that
+  grows the description is the most common way a previously compliant skill goes over.
 
 Good: "Extracts text and tables from PDF files, fills PDF forms, and merges multiple PDFs.
 Use when working with PDF documents or when the user mentions PDFs, forms, or document

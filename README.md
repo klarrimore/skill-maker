@@ -44,8 +44,15 @@ skill-maker/                         repository (workspace)
         utils.py                     shared SKILL.md parsing helper
       assets/                        templates (the review-view template)
       LICENSE.txt                    Apache-2.0
+      tests/  evals/                 dev-only; kept in source control, excluded from the .skill
+  docs/                              dev config, not shipped
+    agents/                          issue tracker, triage labels, domain docs
+    research/                        primary-source investigations
+  .agents/instructions/              canonical reusable instruction documents
+  .claude/skills/run-skill-maker/    project smoke driver (dev tooling, not shipped)
   AGENTS.md                          repo-wide agent guidance (dev config, not shipped)
   CLAUDE.md  .github/                client bootstrap files (dev config, not shipped)
+  CHANGELOG.md
   README.md  .gitignore
 ```
 

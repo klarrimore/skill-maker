@@ -36,6 +36,48 @@ Defines the evals for a skill. Located at `evals/evals.json` within the skill di
 
 ---
 
+## trigger_results.json
+
+The record of a description-optimization run (Step 6). Written to the run workspace so the
+train/held-out split, the per-query trigger rates, and the winning score are auditable
+rather than living only in the conversation.
+
+```json
+{
+  "skill_name": "meeting-actions",
+  "description_before": "Processes meeting transcripts.",
+  "description_after": "Turns meeting transcripts into action-item lists...",
+  "runs_per_query": 3,
+  "threshold": 0.5,
+  "runs": [
+    {
+      "query": "can you pull the action items out of this transcript?",
+      "should_trigger": true,
+      "split": "train",
+      "trigger_rates": { "before": 0.33, "after": 1.0 }
+    }
+  ],
+  "scores": {
+    "before": { "train": 0.60, "held_out": 0.40 },
+    "after": { "train": 0.90, "held_out": 0.85 }
+  },
+  "selected": "after"
+}
+```
+
+**Fields:**
+- `skill_name`: Name matching the skill's frontmatter
+- `description_before` / `description_after`: The descriptions compared
+- `runs_per_query`: How many times each query was run (at least 3)
+- `threshold`: Trigger-rate cutoff for a pass (0.5)
+- `runs[].query` / `runs[].should_trigger`: The eval set entry
+- `runs[].split`: `"train"` or `"held_out"`
+- `runs[].trigger_rates`: Trigger rate per candidate description
+- `scores`: Aggregate train and held-out scores per candidate
+- `selected`: Which candidate won, chosen by the held-out score
+
+---
+
 ## history.json
 
 Tracks version progression in Improve mode. Located at workspace root.

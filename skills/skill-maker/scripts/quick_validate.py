@@ -25,6 +25,10 @@ ROOT_EXCLUDED_DIR_PARTS = {'evals', 'tests'}
 BODY_LINE_BUDGET = 500
 BODY_TOKEN_BUDGET = 5000  # approximated as chars / 4
 
+# The six recognized agentskills.io frontmatter fields. Anything else is a
+# client-specific extension and breaks portability.
+ALLOWED_PROPERTIES = {'name', 'description', 'license', 'allowed-tools', 'metadata', 'compatibility'}
+
 
 def _counts_as_skill_md(rel_path):
     """True if a SKILL.md at rel_path (relative to the skill root) would be packaged."""
@@ -76,9 +80,6 @@ def validate_skill(skill_path):
         frontmatter, _body = parse_frontmatter(content)
     except ValueError as e:
         return False, str(e)
-
-    # Define allowed properties (the six recognized agentskills.io fields)
-    ALLOWED_PROPERTIES = {'name', 'description', 'license', 'allowed-tools', 'metadata', 'compatibility'}
 
     # Check for unexpected properties (excluding nested keys under metadata)
     unexpected_keys = set(frontmatter.keys()) - ALLOWED_PROPERTIES

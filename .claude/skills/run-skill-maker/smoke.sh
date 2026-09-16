@@ -23,9 +23,29 @@ check "validate: skill-maker is spec-valid" 0 $?
 python3 -m scripts.quick_validate evals/files/broken-skill >/dev/null 2>&1
 check "validate: broken fixture rejected" 1 $?
 
+# 2b. The fixture still carries the violations it is meant to test (guards against
+#     an eval run "fixing" it in place and silently disarming the negative case)
+python3 - "$SKILL_DIR/evals/files/broken-skill/SKILL.md" <<'EOF' >/dev/null 2>&1
+import sys
+text = open(sys.argv[1], encoding="utf-8").read()
+required = ["name: Weekly_Log_Summary", "<error logs>", "author:", "version:"]
+sys.exit(0 if all(token in text for token in required) else 1)
+EOF
+check "fixture: broken-skill still carries its violations" 0 $?
+
+# 2c. The valid fixture passes (input for the improve-installed-skill eval)
+python3 -m scripts.quick_validate evals/files/standup-summary >/dev/null 2>&1
+check "validate: standup-summary fixture is valid" 0 $?
+
 # 3. Unit tests (stdlib unittest, no third-party deps)
 python3 -m unittest discover -s tests -t . >/dev/null 2>&1
 check "unittest: tests/ suite passes" 0 $?
+
+# 3b. Grader agrees with the validator: passes on the skill, fails on the fixture
+python3 -m evals.grade_artifacts . >/dev/null 2>&1
+check "grade: artifacts checker passes on skill-maker" 0 $?
+python3 -m evals.grade_artifacts evals/files/broken-skill >/dev/null 2>&1
+check "grade: artifacts checker rejects broken fixture" 1 $?
 
 # 4. Direct invocation: the internal functions import and run without the CLI
 python3 - <<'EOF' >/dev/null 2>&1

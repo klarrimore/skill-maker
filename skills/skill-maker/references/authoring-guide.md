@@ -139,8 +139,9 @@ These consolidate the standard's authoring guidance and the most common failure 
   and plan-validate-execute for batch or destructive operations.
 - Bundle a tested script in `scripts/` when traces show the agent reinventing the same
   logic each run.
-- Write the description imperatively, focused on user intent, pushy, and concise (under
-  1024 characters), including contexts where the user does not name the domain.
+- Write the description imperatively, focused on user intent, pushy, and concise (aim for
+  256 characters or fewer, treat 512 as the working ceiling, 1024 as the hard limit),
+  including contexts where the user does not name the domain.
 - Make the `name` kebab-case and exactly match the parent directory name.
 - Design scripts for non-interactive use: accept input via flags, env, or stdin; document
   usage with `--help`; write helpful errors; emit structured output (JSON, CSV, TSV); send
@@ -177,8 +178,9 @@ These consolidate the standard's authoring guidance and the most common failure 
   `SKILL.md`.
 - Do not write rigid ALWAYS/NEVER directives where reasoning-based instructions work
   better.
-- Do not let the description grow past 1024 characters, and do not overfit it by stuffing
-  in specific keywords from failed eval queries; address the general category instead.
+- Do not let the description grow past the 512-character working ceiling without good
+  reason, and never past the 1024-character hard limit. Do not overfit it by stuffing in
+  specific keywords from failed eval queries; address the general category instead.
 - Do not write scripts with interactive prompts. Agents run in non-interactive shells; a
   blocking prompt hangs forever.
 - Do not emit opaque errors ("Error: invalid input") or free-form output that is hard to

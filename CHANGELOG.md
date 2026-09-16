@@ -1,5 +1,23 @@
 # Changelog - skill-maker
 
+## September 17, 2026
+
+### New
+
+- **Eval quality overhaul after an eval audit**: Added `evals/failure-modes.md` (an error-analysis catalogue mapping `FM-1`…`FM-13` to the evals that catch them), three task evals (improve an installed skill without renaming it, decline a safety-violating skill, honor a user who skips the eval loop), a valid `standup-summary` fixture for the new eval, and `evals/grade_artifacts.py` + `evals/__init__.py` — a code-check grader that emits `grading.json` for the objectively verifiable expectations (kebab name, dir match, description limits, recognized fields, validator result, body budget).
+- **`trigger_results.json` schema**: Documented the record for a description-optimization run (split, per-query trigger rates, held-out scores) in `references/schemas.md`, with the recording step added to `references/description-optimization.md`.
+
+### Improvements
+
+- **Description length budget**: Added a 256-character target and 512-character working ceiling beneath the 1024-character hard limit, and reconciled the wording across `SKILL.md`, `references/spec-reference.md`, `references/authoring-guide.md`, and `references/description-optimization.md` so every place that states the limit agrees.
+- **Sharpened eval expectations**: Replaced fuzzy assertions (for example "pushed into references/ … or short enough") with observables, added a task-specific-guidance assertion, a copy-the-read-only-fixture assertion, and held-out/3-run/multi-context trigger assertions.
+- **Near-miss trigger negatives**: Replaced obviously-irrelevant should-not-trigger queries with near-misses that share skill-authoring vocabulary (splitting an `AGENTS.md`, a custom slash command, an informational standard question).
+- **Fixture hygiene**: Eval id 2 now works on a copy; `smoke.sh` asserts the broken fixture keeps its violations, the valid fixture validates, and the grader agrees with the validator.
+
+### Housekeeping
+
+- **Exposed `ALLOWED_PROPERTIES`** at module scope in `scripts/quick_validate.py` so the eval grader reuses the validator's field set instead of duplicating it. Bumped to v1.4.
+
 ## July 17, 2026
 
 ### Housekeeping
