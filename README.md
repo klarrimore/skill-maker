@@ -19,6 +19,7 @@ cd skills/skill-maker
 pip install -r requirements.txt
 python -m scripts.quick_validate .
 python -m scripts.package_skill . ../../dist
+python -m scripts.install_skill .            # installs to ~/.agents/skills/
 ```
 
 ## Requirements
@@ -46,7 +47,8 @@ skill-maker/                         repository (workspace)
       scripts/                       run as modules from this directory
         quick_validate.py            zero-network spec validator
         package_skill.py             validate then zip into a .skill
-        utils.py                     shared SKILL.md parsing helper
+        install_skill.py             build a clean copy then install it into a skills dir
+        utils.py                     shared SKILL.md parsing + build-exclusion rules
       assets/
         eval_review.html             review-view template
       LICENSE.txt                    Apache-2.0
@@ -85,7 +87,15 @@ The evaluation and description-optimization loops are run by hand; see
 ## Install and use the skill
 
 Place the `skills/skill-maker/` directory where your agent looks for skills, such as
-`~/.agents/skills/skill-maker/` for a user-global install.
+`~/.agents/skills/skill-maker/` for a user-global install. The bundled installer does this
+for you, stripping the dev-only `tests/` and `evals/` trees:
+
+```bash
+cd skills/skill-maker
+python -m scripts.install_skill .                    # -> ~/.agents/skills/skill-maker/
+python -m scripts.install_skill . --target DIR       # any skills directory
+python -m scripts.install_skill . --force            # replace an existing install
+```
 
 ## License
 

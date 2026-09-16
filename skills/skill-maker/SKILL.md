@@ -6,7 +6,7 @@ compatibility: Portable across any skills-compatible agent that reads the agents
 metadata:
   author: klarrimore
   standard: agentskills.io
-  version: "1.5"
+  version: "1.6"
 ---
 
 # Skill Maker
@@ -169,6 +169,19 @@ target agent looks. For cross-client portability, many clients read `.agents/ski
 Source control the folder when it is meant to travel with a project; otherwise keep
 reusable personal skills in the user-scope path.
 
+To build a clean copy (dev-only `tests/`/`evals/` and caches stripped) and install it in one
+step, use the bundled installer. It validates first, defaults to `~/.agents/skills/`, and
+refuses to replace an existing install unless you pass `--force`:
+
+```bash
+python -m scripts.install_skill ./skill-maker
+python -m scripts.install_skill ./skill-maker --target ./.agents/skills
+python -m scripts.install_skill ./skill-maker --force
+```
+
+`--target` takes any skills directory, and `--dry-run` reports what would happen without
+writing.
+
 Some hosts (a hosted skills app or a skills API) additionally accept a zipped `.skill` upload. If
 your client can surface a file to the user and they want a downloadable artifact, package
 it:
@@ -230,6 +243,7 @@ References:
 Scripts (run as modules from the skill root, e.g. `python -m scripts.quick_validate`):
 - `scripts/quick_validate.py` - zero-network spec validator (fallback for `skills-ref validate`).
 - `scripts/package_skill.py` - validate then zip into a `.skill` for hosts that accept uploads.
+- `scripts/install_skill.py` - build a clean copy of a skill and install it into a skills directory (default `~/.agents/skills/`).
 
 Assets:
 - `assets/eval_review.html` - template for the trigger-query review used in description optimization (Step 6); fill the placeholders by hand. There is no separate benchmark viewer; present benchmark results inline or as a `benchmark.md` summary.

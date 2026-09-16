@@ -72,6 +72,33 @@ sys.exit(1 if bad else 0)
 EOF
 check "package: zip excludes tests/evals/caches" 0 $?
 
+# 5b. Installer builds a clean copy and installs it into a target directory
+INSTALL_TARGET="$(mktemp -d)"
+python3 -m scripts.install_skill evals/files/standup-summary --target "$INSTALL_TARGET" >/dev/null 2>&1
+check "install: valid skill installs" 0 $?
+test -f "$INSTALL_TARGET/standup-summary/SKILL.md"
+check "install: SKILL.md at destination" 0 $?
+python3 - "$INSTALL_TARGET" <<'EOF'
+import sys
+from pathlib import Path
+bad = [p for p in Path(sys.argv[1]).rglob('*')
+       if any(x in p.parts for x in ('tests', 'evals', '__pycache__', '.pytest_cache'))]
+sys.exit(1 if bad else 0)
+EOF
+check "install: no dev artifacts installed" 0 $?
+python3 -m scripts.install_skill evals/files/standup-summary --target "$INSTALL_TARGET" >/dev/null 2>&1
+check "install: rerun without --force exits 2" 2 $?
+python3 -m scripts.install_skill evals/files/standup-summary --target "$INSTALL_TARGET" --force >/dev/null 2>&1
+check "install: --force replaces" 0 $?
+python3 -m scripts.install_skill evals/files/broken-skill --target "$INSTALL_TARGET" >/dev/null 2>&1
+check "install: invalid skill refused" 1 $?
+INSTALL_DRYRUN="$(mktemp -d)"; rmdir "$INSTALL_DRYRUN"
+python3 -m scripts.install_skill evals/files/standup-summary --target "$INSTALL_DRYRUN" --dry-run >/dev/null 2>&1
+check "install: dry-run exits 0" 0 $?
+test ! -e "$INSTALL_DRYRUN"
+check "install: dry-run writes nothing" 0 $?
+rm -rf "$INSTALL_TARGET" "$INSTALL_DRYRUN"
+
 # 6. Eval-review UI renders from real data (all placeholders filled)
 cd "$REPO_ROOT"
 python3 scripts/render_review.py "$SKILL_DIR" /tmp/eval_review_rendered.html >/dev/null 2>&1

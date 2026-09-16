@@ -1,5 +1,19 @@
 # Changelog - skill-maker
 
+## [1.6.0] - 2026-09-17
+
+### Added
+
+- Added `scripts/install_skill.py`: builds a clean copy of a skill (dev-only `tests/`/`evals/` and caches stripped) and installs it into a skills directory, defaulting to `~/.agents/skills/`. Supports `--target`, `--force`, `--dry-run`, and `--json`, with documented exit codes and a refuse-unless-`--force` overwrite policy.
+- Added `tests/test_install_skill.py` covering the install, force, dry-run, default-target, exclusion, and refusal paths.
+- Extended `scripts/smoke.sh` to install the valid fixture into a temp target, assert no dev artifacts land there, and check the exit-2 / `--force` / invalid-skill / dry-run behaviors.
+- Documented the installer in `SKILL.md` Step 8 and the bundled-resources catalog, and in `references/environment-adaptations.md`.
+
+### Changed
+
+- Moved the packaging-exclusion rules (`should_exclude`, the `EXCLUDE_*` sets, and a shared `walk_skill` file walker) into `scripts/utils.py`; `package_skill.py` and `install_skill.py` now share one rule set. `should_exclude` remains importable from `scripts.package_skill`.
+- Bumped skill-maker to v1.6.
+
 ## [1.5.0] - 2026-09-17
 
 ### Added
@@ -129,5 +143,6 @@
 
 - Removed an installed skill that was checked in by mistake.
 
+[1.6.0]: https://github.com/klarrimore/skill-maker/compare/v1.5...v1.6
 [1.5.0]: https://github.com/klarrimore/skill-maker/compare/v1.4...v1.5
 [1.4.0]: https://github.com/klarrimore/skill-maker/compare/v1.3...v1.4

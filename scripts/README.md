@@ -41,6 +41,7 @@ python3 -m scripts.quick_validate .                    # validate (exit 0 = vali
 python3 -m scripts.quick_validate evals/files/broken-skill  # expect exit 1
 python3 -m unittest discover -s tests -t .             # unit tests (stdlib, no deps)
 python3 -m scripts.package_skill . ../../dist          # validate + zip -> dist/skill-maker.skill
+python3 -m scripts.install_skill . --target /tmp/skills --dry-run  # report an install
 ```
 
 ## Direct invocation

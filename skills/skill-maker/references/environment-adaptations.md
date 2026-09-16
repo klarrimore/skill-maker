@@ -41,6 +41,11 @@ the matching adaptation.
 so they run anywhere. Packaging is only relevant for hosts that accept a zipped `.skill`
 upload; for folder-based agents, distribute the folder itself.
 
+For a folder install, `scripts/install_skill.py` builds a clean copy (dev-only
+`tests/`/`evals/` and caches stripped) and drops it into a skills directory. It defaults to
+`~/.agents/skills/`, takes any directory via `--target`, and refuses to replace an existing
+install unless passed `--force`. Use `--dry-run` to see the destination without writing.
+
 ## Updating an installed skill in a read-only path
 
 Installed skill directories are often read-only.
