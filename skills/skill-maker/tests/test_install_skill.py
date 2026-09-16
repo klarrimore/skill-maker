@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -113,6 +114,20 @@ class TestInstallSkill(unittest.TestCase):
         with self.assertRaises(InstallError) as ctx:
             install_skill(skill, target=self.target)
         self.assertEqual(ctx.exception.code, EXIT_USAGE)
+
+    def test_installs_from_relative_dot_path(self):
+        # Regression: `install_skill .` is the documented invocation, but the
+        # unresolved path made walk_skill drop the skill-folder prefix and the
+        # staged directory was never created.
+        skill = self._make_skill()
+        cwd = Path.cwd()
+        os.chdir(skill)
+        self.addCleanup(os.chdir, cwd)
+
+        result = install_skill(".", target=self.target)
+
+        self.assertTrue(result["installed"])
+        self.assertTrue((self.target / "my-skill" / "SKILL.md").exists())
 
     def test_refuses_installing_onto_itself(self):
         skill = self._make_skill()

@@ -54,15 +54,20 @@ skill-maker/                         repository (workspace)
       LICENSE.txt                    Apache-2.0
       tests/                         dev-only; kept in source control, excluded from the .skill
       evals/                         dev-only; task evals, trigger queries, grader, fixtures
+        README.md
+        evals.json                   task-eval definitions
+        trigger_queries.json         should- and should-not-trigger cases
         grade_artifacts.py           code-check grader, emits grading.json
         failure-modes.md             FM-1…FM-13 error-analysis catalogue
+        files/                       valid and broken skill fixtures
   docs/                              dev config, not shipped
     agents/                          issue tracker, triage labels, domain docs
     research/                        primary-source investigations
   .agents/                           canonical reusable instruction documents
+    README.md
     instructions/
     *.instructions.md
-  scripts/                           dev tooling: smoke driver (smoke.sh) and review-UI renderer (render_review.py)
+  scripts/                           dev tooling: smoke driver (smoke.sh), review-UI renderer (render_review.py), usage notes (README.md)
   AGENTS.md                          repo-wide agent guidance (dev config, not shipped)
   CLAUDE.md                          Claude Code bootstrap (routes to AGENTS.md)
   .github/                           copilot-instructions.md and instructions/ (client bootstrap)
@@ -96,6 +101,10 @@ python -m scripts.install_skill .                    # -> ~/.agents/skills/skill
 python -m scripts.install_skill . --target DIR       # any skills directory
 python -m scripts.install_skill . --force            # replace an existing install
 ```
+
+The `cd` is required, not decoration: the bundled scripts import package-relatively
+(`scripts.*`), so running them from the repository root fails with
+`No module named scripts.install_skill`.
 
 ## License
 

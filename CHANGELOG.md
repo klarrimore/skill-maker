@@ -14,6 +14,11 @@
 - Moved the packaging-exclusion rules (`should_exclude`, the `EXCLUDE_*` sets, and a shared `walk_skill` file walker) into `scripts/utils.py`; `package_skill.py` and `install_skill.py` now share one rule set. `should_exclude` remains importable from `scripts.package_skill`.
 - Bumped skill-maker to v1.6.
 
+### Fixed
+
+- Restored the documented Python 3.8+ floor: `scripts/utils.py` now starts with `from __future__ import annotations`, so its `tuple[dict, str]` return annotation is stored as a string instead of being evaluated at import time on 3.8.
+- Fixed `walk_skill` to resolve its input path first, so `python -m scripts.install_skill .` (the documented invocation) no longer fails with `No such file or directory`: an unresolved `.` dropped the skill-folder prefix from arcnames and the staged directory was never created. Added regression tests in `tests/test_utils.py` and `tests/test_install_skill.py`.
+
 ## [1.5.0] - 2026-09-17
 
 ### Added

@@ -1,6 +1,10 @@
+import os
+import shutil
+import tempfile
 import unittest
+from pathlib import Path
 
-from scripts.utils import parse_frontmatter
+from scripts.utils import parse_frontmatter, walk_skill
 
 
 class TestParseFrontmatter(unittest.TestCase):
@@ -56,6 +60,37 @@ class TestParseFrontmatter(unittest.TestCase):
             "---\nname: my-skill\ndescription: Does a thing.\n---\nline1\nline2\n"
         )
         self.assertEqual(body, "line1\nline2\n")
+
+
+class TestWalkSkill(unittest.TestCase):
+    def _make_skill(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        skill = tmp / "my-skill"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text("x")
+        (skill / "tests").mkdir()
+        (skill / "tests" / "t.py").write_text("x")
+        return skill
+
+    def test_dot_path_keeps_skill_folder_prefix(self):
+        # Regression: Path('.').parent is '.', so a relative `.` used to drop
+        # the skill-folder prefix from arcnames.
+        skill = self._make_skill()
+        cwd = Path.cwd()
+        os.chdir(skill)
+        self.addCleanup(os.chdir, cwd)
+
+        entries = {str(arc): excluded for _, arc, excluded in walk_skill(".")}
+
+        self.assertIn("my-skill/SKILL.md", entries)
+        self.assertFalse(entries["my-skill/SKILL.md"])
+        self.assertTrue(entries["my-skill/tests/t.py"])
+
+    def test_named_path_keeps_skill_folder_prefix(self):
+        skill = self._make_skill()
+        entries = {str(arc): excluded for _, arc, excluded in walk_skill(skill)}
+        self.assertIn("my-skill/SKILL.md", entries)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,7 @@
 """Shared utilities for skill-maker scripts."""
 
+from __future__ import annotations
+
 import fnmatch
 import re
 from pathlib import Path
@@ -67,8 +69,12 @@ def walk_skill(skill_path):
     `arcname` is relative to the skill's parent directory, so it carries the
     skill folder name as its first component. Callers decide whether to skip
     excluded entries; this is the single source of the build rules.
+
+    The path is resolved first so the invariant holds even when the caller
+    passes `.` or another relative path: without it, `Path('.').parent` is
+    `.` and the folder-name prefix is lost.
     """
-    skill_path = Path(skill_path)
+    skill_path = Path(skill_path).resolve()
     for file_path in sorted(skill_path.rglob("*")):
         if not file_path.is_file():
             continue
