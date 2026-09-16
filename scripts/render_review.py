@@ -2,7 +2,7 @@
 """Render assets/eval_review.html with real data (fills the three placeholders).
 
 Usage:
-    python3 .claude/skills/run-skill-maker/render_review.py [skill_dir] [out_html]
+    python3 scripts/render_review.py [skill_dir] [out_html]
 
 Defaults: skill_dir = skills/skill-maker (relative to cwd), out_html = /tmp/eval_review_rendered.html
 Reads name/description from the skill's SKILL.md frontmatter and EVAL_DATA from

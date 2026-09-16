@@ -28,7 +28,7 @@ from scripts.quick_validate import (  # noqa: E402
 )
 from scripts.utils import parse_frontmatter  # noqa: E402
 
-KEBAB = re.compile(r"^[a-z0-9-]+$")
+KEBAB = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 def _check(text, passed, evidence):
@@ -73,14 +73,15 @@ def grade(skill_dir):
     description = str(frontmatter.get("description", "")).strip()
     results.append(_check(
         "Description is 1024 characters or fewer",
-        len(description) <= 1024,
-        f"length={len(description)}",
+        bool(description) and len(description) <= 1024,
+        f"length={len(description)}" if description else "missing description",
     ))
     results.append(_check(
         "Description contains no angle brackets",
-        "<" not in description and ">" not in description,
-        "clean" if "<" not in description and ">" not in description
-        else f"contains angle brackets: {description!r}",
+        bool(description) and "<" not in description and ">" not in description,
+        "clean" if description and "<" not in description and ">" not in description
+        else ("missing description" if not description
+              else f"contains angle brackets: {description!r}"),
     ))
 
     extra = sorted(set(frontmatter.keys()) - ALLOWED_PROPERTIES)

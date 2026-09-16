@@ -1,21 +1,19 @@
----
-name: run-skill-maker
-description: Run, test, validate, package, or screenshot the skill-maker project. Use when asked to run the validator or packager, run the test suite, smoke-test the repo, render or screenshot the eval review UI, or confirm the scripts still work after a change.
----
+# Dev tooling
 
-# Run skill-maker
+Repo-level helpers for developing and verifying skill-maker. None of this ships: it lives
+outside `skills/skill-maker/` and is excluded from the packaged `.skill`. Run commands from the
+repo root unless noted.
 
-skill-maker is not a server or GUI app — its runnable surfaces are two Python CLI
-scripts (`quick_validate`, `package_skill`), a stdlib `unittest` suite, and one static HTML
-asset (`assets/eval_review.html`, an eval-review UI with placeholder tokens).
-All paths below are relative to the **repo root**.
+skill-maker is not a server or GUI app — its runnable surfaces are two Python CLI scripts
+(`quick_validate`, `package_skill`), a stdlib `unittest` suite, and one static HTML asset
+(`assets/eval_review.html`, an eval-review UI with placeholder tokens).
 
-## Run (agent path) — the smoke driver
+## Smoke driver
 
 One command exercises every surface and exits non-zero on the first failure:
 
 ```bash
-bash .claude/skills/run-skill-maker/smoke.sh
+bash scripts/smoke.sh
 ```
 
 Checks: validator passes on the skill, rejects the broken fixture (and confirms the fixture
@@ -28,12 +26,12 @@ renders from real data, and (if `google-chrome` exists) a screenshot lands at
 To render/screenshot the review UI alone:
 
 ```bash
-python3 .claude/skills/run-skill-maker/render_review.py   # -> /tmp/eval_review_rendered.html
+python3 scripts/render_review.py   # -> /tmp/eval_review_rendered.html
 google-chrome --headless --disable-gpu --window-size=1200,1600 \
   --screenshot=/tmp/eval_review_screenshot.png file:///tmp/eval_review_rendered.html
 ```
 
-## Run (individual surfaces)
+## Individual surfaces
 
 All must run **from `skills/skill-maker/`, as modules** (see Gotchas):
 

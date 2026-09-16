@@ -740,12 +740,13 @@ confirmed. These are explicitly *not* claims; they are open items.
 
 ## Implications for this repo
 
-Where the primary sources refine or contradict what `skills-maker` currently claims. Page
-citations refer to this repo's files; no repo files were modified except this research file.
+Where the primary sources refine or contradict what `skill-maker` currently claims. File
+citations name the repo file and the section within it. The research exercise itself did not
+modify any repo file; the accompanying changes were made separately.
 
 1. **Remove or qualify the angle-bracket claim** in
-   `skills/skill-maker/references/spec-reference.md` (`description rules`, lines ~86–87) and in
-   `skills/skill-maker/references/description-optimization.md` (`Step 4`, line ~104). The official
+   `skills/skill-maker/references/spec-reference.md` (the `description rules` section) and in
+   `skills/skill-maker/references/description-optimization.md` (the `Step 4` section). The official
    `skills-ref` validator does not reject `<`/`>` and the spec is silent. As written, the repo
    presents an implementation-specific rule as if it were part of the standard, and then relies on
    it during re-validation. Either drop it or attribute it clearly: "not checked by `skills-ref`;
@@ -753,21 +754,23 @@ citations refer to this repo's files; no repo files were modified except this re
 
 2. **Reframe "exactly six recognized fields."** The spec never says extra fields are forbidden;
    the *validator* rejects them, and `AGENTS.md` explicitly says implementations do not add
-   requirements. The repo's `spec-reference.md` line 32 ("There are exactly six recognized
-   fields") and the portability warning at lines 171–173 should distinguish spec fields (six
+   requirements. The repo's `spec-reference.md` (the `Frontmatter schema` section's "There are
+   exactly six recognized fields") and the portability warning in the `Portable vs
+   platform-locked` / `Portability operations` sections should distinguish spec fields (six
    defined) from validator enforcement (rejects extras). This matters because a skill that puts
    client extensions at top level is still *spec-conformant*, just not portable.
 
-3. **The `name` character-set nuance is understated.** The repo line 36/68 says "Lowercase letters,
-   digits, and hyphens … (`a-z`, `0-9`)". The spec says "unicode lowercase alphanumeric" and the
-   validator genuinely accepts Unicode (Chinese, Russian, accented) names. The repo's ASCII-only
-   phrasing is stricter than both the spec prose and the validator. Add the Unicode point, or at
-   least note the spec's own `a-z` parenthetical is inconsistent with its "unicode" wording.
+3. **The `name` character-set nuance is understated.** The repo's field table (`name` row) and
+   `name rules` section say "Lowercase letters, digits, and hyphens … (`a-z`, `0-9`)". The spec
+   says "unicode lowercase alphanumeric" and the validator genuinely accepts Unicode (Chinese,
+   Russian, accented) names. The repo's ASCII-only phrasing is stricter than both the spec prose
+   and the validator. Add the Unicode point, or at least note the spec's own `a-z` parenthetical
+   is inconsistent with its "unicode" wording.
 
-4. **`~/.agent/skills/` is likely wrong.** `spec-reference.md` line 185 lists
-   `~/.agent/skills/`. The first-party client guide lists `~/.agents/skills/` and never this
-   singular path. Verify before keeping; if it is meant to be a real client path, attribute it to
-   that client.
+4. **`~/.agent/skills/` is likely wrong.** `spec-reference.md` (the `Directory placement
+   (convention, not spec)` section) lists `~/.agent/skills/`. The first-party client guide lists
+   `~/.agents/skills/` and never this singular path. Verify before keeping; if it is meant to be
+   a real client path, attribute it to that client.
 
 5. **`compatibility` minimum is not enforced by `skills-ref`.** The repo correctly quotes
    "1 to 500 characters," which matches the spec. Worth noting the validator only enforces the
@@ -776,19 +779,20 @@ citations refer to this repo's files; no repo files were modified except this re
 
 6. **"Canonical validator" wording.** The spec calls `skills-ref` a "reference library" and its
    README calls it "demonstration purposes only … not meant to be used in production." The repo's
-   `spec-reference.md` line 194 says "Canonical validator." Softening to "reference validator
-   (demonstration-grade; not a production SDK)" better matches the primary source and the fact
-   that code contributions to it are currently closed.
+   `spec-reference.md` (the `Validation and distribution` section) says "Canonical validator."
+   Softening to "reference validator (demonstration-grade; not a production SDK)" better matches
+   the primary source and the fact that code contributions to it are currently closed.
 
-7. **`.skill` zip, `gh skill`, `npx skills add`, and reserved words** (`spec-reference.md` lines
-   72–75 and 198–199) are not supported by any agentskills.io primary source. Keep them only if
-   they can be attributed to specific clients/tools; otherwise label them clearly as de-facto
-   ecosystem convention rather than standard behavior.
+7. **`.skill` zip, `gh skill`, `npx skills add`, and reserved words** (`spec-reference.md`, the
+   `name rules` and `Validation and distribution` sections) are not supported by any
+   agentskills.io primary source. Keep them only if they can be attributed to specific
+   clients/tools; otherwise label them clearly as de-facto ecosystem convention rather than
+   standard behavior.
 
 8. **Versioning statement.** The repo says the standard is "intentionally minimal and unversioned"
-   (`spec-reference.md` line 5). This is accurate in effect (no tags, no version field), but it is
-   an inference from absence. Consider saying "the spec publishes no version number; conformance
-   is the current text" rather than asserting intent.
+   (`spec-reference.md`, the document intro). This is accurate in effect (no tags, no version
+   field), but it is an inference from absence. Consider saying "the spec publishes no version
+   number; conformance is the current text" rather than asserting intent.
 
 9. **What the repo gets right and should keep:** the field table and exact limits (64 / 1024 / 500
    with the correct `compatibility` lower bound), the name rules including directory match and

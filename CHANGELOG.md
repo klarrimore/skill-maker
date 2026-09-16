@@ -17,6 +17,7 @@
 ### Housekeeping
 
 - **Exposed `ALLOWED_PROPERTIES`** at module scope in `scripts/quick_validate.py` so the eval grader reuses the validator's field set instead of duplicating it. Bumped to v1.4.
+- **Dev tooling moved out of `.claude/`**: Moved the smoke driver and review-UI renderer from `.claude/skills/run-skill-maker/` to the repo-root `scripts/` (documented in `scripts/README.md`), deleted the Claude-specific project run skill and the now-empty `.claude/` tree, and updated `AGENTS.md`/`README.md`. Removed the stale generated `Project_Architecture_Blueprint.md`.
 
 ## July 17, 2026
 

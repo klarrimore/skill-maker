@@ -4,7 +4,7 @@ Repo-wide agent guidance. This file is canonical: `CLAUDE.md` and `.github/copil
 
 ## What ships
 
-This repo is a workspace; the deliverable is the self-contained skill folder `skills/skill-maker/`. Its `SKILL.md`, `references/`, `scripts/`, `assets/`, and `LICENSE.txt` are the whole artifact. Everything at the root is dev config that stays behind: `README.md`, `CHANGELOG.md`, `AGENTS.md`, `CLAUDE.md`, `.github/`, `.claude/`, `docs/`.
+This repo is a workspace; the deliverable is the self-contained skill folder `skills/skill-maker/`. Its `SKILL.md`, `references/`, `scripts/`, `assets/`, and `LICENSE.txt` are the whole artifact. Everything at the root is dev config that stays behind: `README.md`, `CHANGELOG.md`, `AGENTS.md`, `CLAUDE.md`, `.github/`, `docs/`, `scripts/`.
 
 Two trees inside the skill are dev-only — `tests/` and `evals/` — kept in source control but excluded from the packaged `.skill`. `README.md` has the full layout.
 
@@ -21,10 +21,10 @@ The skill's own references are the authority on authoring; reach for them instea
 Run the smoke driver; it exercises the validator, packager, tests, and eval-review UI, and exits non-zero on the first failure:
 
 ```bash
-bash .claude/skills/run-skill-maker/smoke.sh
+bash scripts/smoke.sh
 ```
 
-Individual surfaces, direct-invocation snippets, and gotchas live in the run-skill-maker skill (`.claude/skills/run-skill-maker/SKILL.md`). Run the bundled scripts as modules from the skill directory — `cd skills/skill-maker && python -m scripts.quick_validate .` — since the package-relative imports break under a path invocation.
+Individual surfaces, direct-invocation snippets, and gotchas live in `scripts/README.md`. Run the bundled scripts as modules from the skill directory — `cd skills/skill-maker && python -m scripts.quick_validate .` — since the package-relative imports break under a path invocation.
 
 ## Canonical instructions
 

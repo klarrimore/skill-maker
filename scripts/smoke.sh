@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Smoke-drive every runnable surface of skill-maker. Run from the repo root:
-#   bash .claude/skills/run-skill-maker/smoke.sh
+#   bash scripts/smoke.sh
 # Exits non-zero on the first failed check.
 set -u
 
-REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SKILL_DIR="$REPO_ROOT/skills/skill-maker"
 DIST="$(mktemp -d)"
 FAIL=0
@@ -74,7 +74,7 @@ check "package: zip excludes tests/evals/caches" 0 $?
 
 # 6. Eval-review UI renders from real data (all placeholders filled)
 cd "$REPO_ROOT"
-python3 .claude/skills/run-skill-maker/render_review.py "$SKILL_DIR" /tmp/eval_review_rendered.html >/dev/null 2>&1
+python3 scripts/render_review.py "$SKILL_DIR" /tmp/eval_review_rendered.html >/dev/null 2>&1
 check "render: eval_review.html filled from real data" 0 $?
 
 # 7. Screenshot the rendered UI (skipped when no chrome)

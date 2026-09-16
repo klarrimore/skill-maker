@@ -49,7 +49,7 @@ skill-maker/                         repository (workspace)
     agents/                          issue tracker, triage labels, domain docs
     research/                        primary-source investigations
   .agents/instructions/              canonical reusable instruction documents
-  .claude/skills/run-skill-maker/    project smoke driver (dev tooling, not shipped)
+  scripts/                           dev tooling: smoke driver (smoke.sh) and review-UI renderer (render_review.py)
   AGENTS.md                          repo-wide agent guidance (dev config, not shipped)
   CLAUDE.md  .github/                client bootstrap files (dev config, not shipped)
   CHANGELOG.md
