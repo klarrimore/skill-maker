@@ -159,22 +159,30 @@ def validate_skill(skill_path):
     if len(description) > 1024:
         return False, f"Description is too long ({len(description)} characters). Maximum is 1024 characters."
 
-    # Validate compatibility field if present (optional, max 500 chars)
-    compatibility = frontmatter.get('compatibility', '')
-    if compatibility:
+    # Validate optional scalar fields and metadata according to the portable schema.
+    if 'license' in frontmatter and not isinstance(frontmatter.get('license'), str):
+        return False, f"License must be a string, got {type(frontmatter.get('license')).__name__}"
+    if 'allowed-tools' in frontmatter and not isinstance(frontmatter.get('allowed-tools'), str):
+        return False, f"Allowed tools must be a string, got {type(frontmatter.get('allowed-tools')).__name__}"
+
+    if 'compatibility' in frontmatter:
+        compatibility = frontmatter.get('compatibility')
         if not isinstance(compatibility, str):
             return False, f"Compatibility must be a string, got {type(compatibility).__name__}"
         if len(compatibility) > 500:
             return False, f"Compatibility is too long ({len(compatibility)} characters). Maximum is 500 characters."
 
-    # Validate metadata is a string->string map if present (optional)
-    metadata = frontmatter.get('metadata')
-    if metadata is not None:
+    if 'metadata' in frontmatter:
+        metadata = frontmatter.get('metadata')
         if not isinstance(metadata, dict):
             return False, f"Metadata must be a mapping, got {type(metadata).__name__}"
+        if not all(isinstance(key, str) for key in metadata):
+            return False, "Metadata keys must be strings"
+        if not all(isinstance(value, str) for value in metadata.values()):
+            return False, "Metadata values must be strings"
+
 
     return True, "Skill is valid!"
-
 
 def body_warnings(skill_path):
     """Non-fatal advisories on the SKILL.md body budget. Returns a list of strings."""

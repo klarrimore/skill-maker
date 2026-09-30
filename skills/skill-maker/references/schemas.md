@@ -184,7 +184,8 @@ Tracks version progression in Improve mode. Located at workspace root.
 - `iterations[].parent`: Parent version this was derived from
 - `iterations[].train_score` / `held_out_score`: ordered score tuples of
   objective pass rate, calibrated judge pass rate, negative token mean, and
-  negative duration mean
+  negative duration mean. A missing metric is `null`, not zero, and is skipped
+  during score comparison.
 - `iterations[].validation` / `iterations[].audit`: candidate checks
 - `iterations[].grading_result`: `baseline`, `won`, `lost`, `tie`, or `invalid`
 - `iterations[].is_current_best`: Whether this is the current best version

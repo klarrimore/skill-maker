@@ -13,6 +13,9 @@ def main():
     if operation == "revise":
         source = Path(request["skill_path"])
         destination = Path(request["candidate_path"])
+        if (source / "evals").exists() or (source / "tests").exists():
+            print(json.dumps({"protocol": protocol, "status": "error", "error": "revision source leaked dev evals"}))
+            return
         if destination.exists():
             shutil.rmtree(str(destination))
         shutil.copytree(str(source), str(destination))
@@ -24,12 +27,18 @@ def main():
         print(json.dumps({"protocol": protocol, "status": "ok", "result": "pass", "critique": "fixture"}))
         return
     if operation == "trigger":
+        if "should_trigger" in request:
+            print(json.dumps({"protocol": protocol, "status": "error", "error": "trigger label leaked"}))
+            return
         query = request.get("query", "").lower()
-        triggered = any(word in query for word in ("skill", "evaluate", "workflow"))
+        triggered = any(word in query for word in ("skill", "evaluate", "workflow", "run", "report"))
         print(json.dumps({"protocol": protocol, "status": "ok", "triggered": triggered}))
         return
     if operation != "task":
         print(json.dumps({"protocol": protocol, "status": "error", "error": "unsupported operation"}))
+        return
+    if "expected_output" in request:
+        print(json.dumps({"protocol": protocol, "status": "error", "error": "expected output leaked"}))
         return
     output = Path(request["output_dir"])
     output.mkdir(parents=True, exist_ok=True)

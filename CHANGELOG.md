@@ -11,6 +11,10 @@
 - Migrated `evals/evals.json` and trigger queries to typed version 1 contracts, calibrated the self-eval judge rubrics with held-out labels, and moved artifact grading into shipped `scripts.skill_eval`.
 - Updated the skill workflow, schemas, evaluation references, README, and smoke-facing self-eval documentation to describe the automated path and manual fallback.
 
+### Fixed
+
+- Trimmed the shipped skill body below the Codex byte advisory, hardened optional frontmatter types, rejected invalid adapter operations and trigger responses, refused incomplete benchmark selections, preserved unavailable metrics during candidate ranking, withheld dev-only eval data from revision adapters, kept answer keys out of task and trigger requests, and recorded revision evidence.
+
 
 ## [1.9.0] - 2026-09-30
 

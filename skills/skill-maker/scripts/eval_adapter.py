@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 
 PROTOCOL = "skill-eval/v1"
+OPERATIONS = {"task", "trigger", "judge", "revise"}
 MAX_STDOUT_BYTES = 2 * 1024 * 1024
 MAX_STDERR_BYTES = 16 * 1024
 
@@ -43,12 +44,16 @@ class CommandAdapter:
     def run(self, request: Dict[str, Any]) -> AdapterResult:
         if not isinstance(request, dict) or request.get("protocol") != PROTOCOL:
             raise AdapterError("adapter request must use protocol {}".format(PROTOCOL))
+        operation = request.get("operation")
+        if operation not in OPERATIONS:
+            raise AdapterError("adapter request operation must be one of {}".format(sorted(OPERATIONS)))
+        if not isinstance(request.get("run_id"), str) or not request["run_id"].strip():
+            raise AdapterError("adapter request must include a run_id")
+        output_dir = request.get("output_dir")
+        if not isinstance(output_dir, str) or not output_dir.strip():
+            raise AdapterError("adapter request must include output_dir")
         request_json = json.dumps(request, sort_keys=True) + "\n"
-        env = {}
-        if "PATH" in os.environ:
-            env["PATH"] = os.environ["PATH"]
-        if "PYTHONPATH" in os.environ:
-            env["PYTHONPATH"] = os.environ["PYTHONPATH"]
+        env = {"PATH": os.environ.get("PATH", "")}
         try:
             completed = subprocess.run(
                 self.argv,
@@ -94,6 +99,8 @@ class CommandAdapter:
             return
         if "error" in response and response["error"] is not None:
             raise AdapterError("successful adapter responses cannot include an error")
+        if request.get("operation") == "trigger" and not isinstance(response.get("triggered"), bool):
+            raise AdapterError("trigger responses must include a boolean triggered value")
         if "final" in response and not isinstance(response["final"], str):
             raise AdapterError("adapter final must be a string when present")
         if "transcript" in response and not isinstance(response["transcript"], (str, list)):

@@ -11,262 +11,99 @@ metadata:
 
 # Skill Maker
 
-Create new skills and iteratively improve them, conforming to the open Agent Skills
-standard (agentskills.io). A skill is a folder containing a `SKILL.md` file (YAML
-frontmatter plus Markdown instructions) and optional bundled `scripts/`, `references/`,
-and `assets/`. The whole point of the standard is portability: a skill built to the
-core format runs unchanged across every skills-compatible agent. Stay on the core format and
-the skill stays portable; reach for a client-specific frontmatter field and it does not.
+Create and improve portable Agent Skills. A skill is a directory containing
+`SKILL.md` plus optional `scripts/`, `references/`, and `assets/`. Keep the
+portable artifact self-contained. Resolve bundled paths relative to this skill's
+own root. Do not search another checkout for missing skill resources.
 
-## The core loop
+## Core loop
 
-The work is a cycle, not a checklist: **draft → run on real prompts → evaluate with the
-user → rewrite → repeat**, then optimize the `description` for triggering, validate against
-the spec, and hand back the folder. What makes it a loop is the repeat: most of the value
-comes from cycling draft-and-evaluate several times, not from marching the procedure once.
-The numbered Steps below are that procedure in full; this is its shape.
+1. Capture the workflow, trigger conditions, output format, dependencies, edge cases,
+   and whether objective test cases are useful.
+2. Research real artifacts such as runbooks, schemas, API documentation, examples,
+   and failure reports. Prefer observed expertise over generic procedure.
+3. Draft the skill with progressive disclosure. Keep the body under 500 lines and
+   roughly 5000 tokens. Move detailed domain material into focused references.
+4. Show 2 or 3 realistic prompts to the author, then save approved cases in
+   `evals/evals.json`.
+5. Evaluate before rewriting:
+   ```bash
+   python -m scripts.skill_eval audit <skill> --workspace <workspace>
+   python -m scripts.skill_eval run <skill> --workspace <workspace> \
+     --adapter-arg <executable> --adapter-arg <argument>
+   python -m scripts.skill_eval benchmark <skill> --workspace <workspace>
+   ```
+   Inspect transcripts and artifacts and show outputs to the author. If no explicit
+   adapter exists, use the manual fallback in `references/evaluation.md` and do not
+   invent model metrics.
+6. Tune triggering with balanced train and held-out queries:
+   ```bash
+   python -m scripts.skill_eval run <skill> --trigger --runs 3 \
+     --workspace <workspace> --adapter-arg <executable>
+   ```
+   Select by held-out results, not training results.
+7. Validate before delivery:
+   ```bash
+   skills-ref validate <skill>
+   python -m scripts.quick_validate <skill>
+   ```
+   The bundled validator is the zero-network fallback. Fix non-zero results; weigh
+   body-budget warnings as explicit portability tradeoffs.
+8. Package or install only after validation:
+   ```bash
+   python -m scripts.package_skill <skill> <dist>
+   python -m scripts.install_skill <skill> [--target <skills-dir>] [--force]
+   ```
 
-Your job is to figure out where the user is in this cycle and jump in there. If they
-say "I want a skill for X", help narrow it, draft it, write test cases, run them, and
-iterate. If they already have a draft, go straight to evaluate-and-improve. If they say
-"skip the evals, just vibe with me", do that. Stay flexible.
+## Authoring rules
 
-If you keep a task list, add the Steps below to it so none get skipped.
+Read `references/spec-reference.md` before changing frontmatter and
+`references/authoring-guide.md` before drafting the body. Use only the six
+portable frontmatter fields. `name` must be kebab-case and match the directory.
+`description` must say what the skill does and when to use it. Write imperative,
+specific instructions and explain why important steps exist. Avoid hidden access,
+data exfiltration, misleading descriptions, and client-specific assumptions.
+Use a comma, period, colon, or parentheses instead of U+2014.
 
-## Communicating with the user
+For an existing or installed skill, preserve its name, copy it to a writable
+workspace, make the smallest justified change, and revalidate the copy. Never
+modify source fixtures or an installed read-only directory.
 
-Skill authors range from career engineers to people who just opened a terminal.
-"Evaluation" and "benchmark" are usually fine; only use "JSON" or "assertion" unbidden if
-the user has shown they know those terms, and briefly define a term when in doubt.
+## Evaluation and improvement
 
----
+The shipped evaluator uses the `skill-eval/v1` command adapter. It runs deterministic
+expectations locally, sends only `judge` expectations to the adapter, and records
+paired with-skill and baseline results. Command expectations are denied unless
+`--allow-command-checks` is explicit. They use literal argv, `shell=False`, a bounded
+timeout, a minimal environment, and a run output directory as cwd.
 
-## Creating a skill
-
-### Step 1: Capture intent
-
-Before anything else, confirm this should be a skill at all and
-not an always-on instruction; see the "Decide first" section in references/authoring-guide.md.
-
-The current conversation may already contain the workflow to capture (the user says
-"turn this into a skill"). If so, mine the history first: the tools used, the sequence
-of steps, corrections the user made, the input and output formats observed. Then confirm
-the gaps before moving on.
-
-Pin down four things:
-
-1. What should this skill let the agent do?
-2. When should it trigger? (which user phrases and contexts)
-3. What is the expected output format?
-4. Do we want test cases? Skills with objectively verifiable outputs (file transforms,
-   data extraction, code generation, fixed workflows) benefit from them. Subjective
-   skills (writing voice, visual design) usually do not. Suggest a default by skill type
-   and let the user decide.
-
-### Step 2: Interview and research
-
-Ask about edge cases, input and output formats, example files, success criteria, and
-dependencies before writing test prompts. If research helps (looking up an API, a file
-format, a similar skill), do it now, in parallel via subagents if your environment has
-them, otherwise inline. Come prepared so the user carries less of the load.
-
-The single most valuable input is real expertise, not general knowledge. Do not generate
-a skill from what a model already knows: that produces vague, generic procedure ("handle
-errors appropriately", "follow best practices"). Extract the real pattern from a hands-on
-task, or synthesize from real artifacts: runbooks, style guides, API specs, code-review
-comments, version-control history, and actual failure cases.
-
-### Step 3: Write the SKILL.md
-
-Fill in the frontmatter and body. The exact, current frontmatter schema and naming rules
-(field-by-field constraints, character limits, what makes a skill portable vs
-platform-locked) live in **`references/spec-reference.md`**. Read it before writing
-frontmatter. The how-to-write-well guidance (anatomy, progressive disclosure, writing
-patterns, the full do's and don'ts) lives in **`references/authoring-guide.md`**. Read it
-before writing the body.
-
-The two fields that matter most:
-
-- **name**: the skill identifier. Lowercase letters, digits, and hyphens only, 1 to 64
-  characters, no leading/trailing/double hyphens, and it must match the parent directory
-  name exactly, a portability rule from the standard's own reference validator, not
-  something every client checks (see `references/spec-reference.md`). `pdf-processing`,
-  not `PDF_Processing`.
-- **description**: the primary and essentially only triggering mechanism. It carries the
-  entire burden of getting the skill loaded, so state both what the skill does and when
-  to use it, including contexts where the user does not name the domain directly. Agents
-  tend to under-trigger, so make it a little pushy: list the cases, "even if they do not
-  explicitly mention X". Aim for 256 characters or fewer, treat 512 as the working
-  ceiling, and never approach the 1024 hard limit. The spec is silent on `<`/`>` and
-  `skills-ref` does not check them; the bundled validator rejects them as hardening,
-  since some clients may sanitize markup.
-
-Then write the body: the actual instructions, in the imperative, explaining the why
-behind each step rather than stacking rigid ALWAYS/NEVER rules. Keep `SKILL.md` under
-500 lines and roughly 5000 tokens; move anything longer into `references/` and point to
-it with a clear "read this when..." instruction. This is progressive disclosure, and it
-is the core discipline of the standard: only `name` and `description` load at startup,
-the body loads on activation, and bundled resources load on demand. Write plain
-sentences: use commas, periods, colons, or parentheses for the connections an em dash
-(U+2014) would otherwise carry, and do not put that character anywhere in a skill's
-frontmatter or body.
-
-### Safety and the principle of least surprise
-
-A skill's actual behavior must not surprise a user who only read its description: no
-hidden unauthorized access, data exfiltration, or misleading intent behind a benign-looking
-description. (Openly benign creative framings like "roleplay as an X" are fine.)
-
-### Step 4: Test cases
-
-After drafting, write 2 to 3 realistic test prompts: the kind of thing a real user would
-actually type. Show them to the user ("Here are a few test cases I'd like to try, look
-right?") and run them. Save the prompts to `evals/evals.json` (schema in
-**`references/schemas.md`**). Hold off on writing assertions; draft those while the runs
-are in progress.
-
-### Step 5: Evaluate and improve
-
-Run `python -m scripts.skill_eval audit <skill> --workspace <workspace>` before any
-model-backed run. Fix error findings, then run paired with-skill and baseline cases with the
-explicit adapter described in `references/evaluation.md`. Inspect and show the outputs to the
-user before rewriting. Use `benchmark` for reproducible aggregates and `improve` only when a
-sandboxed, held-out candidate loop is appropriate. If no adapter exists, follow the manual
-fallback and do not invent model metrics. Read transcripts and artifacts, not just final text.
-
-### Step 6: Optimize the description
-
-The description determines triggering, so after the skill works, tune it with the versioned
-train/held-out query set in `evals/trigger_queries.json`. Run at least three repetitions per
-query with `python -m scripts.skill_eval run <skill> --trigger --runs 3`; select by held-out
-score and review the before/after output. Read **`references/description-optimization.md`** for
-the adapter and manual fallback.
-
-### Step 7: Validate against the spec
-
-Before handing the skill back, validate it. The standard's reference validator (a
-demonstration library, not a production SDK):
-
+Use `improve` only for a sandboxed candidate loop:
 ```bash
-skills-ref validate ./skill-maker
+python -m scripts.skill_eval improve <skill> --workspace <workspace> \
+  --max-iterations 3 --adapter-arg <executable> --adapter-arg <argument>
 ```
+Candidates and `best-skill/<name>/` stay under the workspace. Held-out prompts,
+labels, results, and scores are not sent to revision requests. Promotion requires
+a strict held-out improvement, then calibrated judge rate, lower token mean, and
+lower duration mean. Unavailable metrics remain unavailable. Review the candidate
+outputs before applying any result to the source skill.
 
-If `skills-ref` is not installed, use the bundled zero-network validator. It checks the
-spec constraints (frontmatter fields, the 64/1024/500 character limits, kebab naming,
-name-matches-directory) plus hardening checks the spec does not require (rejecting angle
-brackets and the em dash character, U+2014) and prints soft warnings on body length and
-name portability, so it is stricter than the spec on the hard checks alone:
-
-```bash
-python -m scripts.quick_validate ./skill-maker
-```
-
-A non-zero exit is a spec violation or a hardening rejection: fix it before distributing.
-A warning printed after a valid result (body over the line, token, or Codex byte budget; a
-non-ASCII name; a description near the 1024-character ceiling) is a portability tradeoff,
-not a defect: a skill can legitimately keep a Unicode name or a longer body. Weigh the
-tradeoff and tell the user which you chose and why, rather than reflexively fixing or
-ignoring it.
-
-### Step 8: Distribute
-
-A skill is just a folder, and the folder is the unit of distribution. Place it where the
-target agent looks. For cross-client portability, many clients read `.agents/skills/<name>/`
-(project scope), `~/.agents/skills/<name>/` (user scope), or a client-specific
-`.<client>/skills/` directory. The open standard's own client guide calls "project overrides
-user on a collision" the universal convention, but in practice it is not: at least one major
-client reverses that precedence for personal-vs-project, and at least one other does not
-resolve collisions at all: same-named skills from different scopes can simply coexist, and
-an explicit by-name invocation can silently fail to resolve when more than one match exists
-(see `references/spec-reference.md`). Do not design around any collision-precedence rule;
-pick a name unlikely to collide with a system-bundled skill or another author's skill in the
-first place. Source control the folder when it is meant to travel with a project; otherwise
-keep reusable personal skills in the user-scope path.
-
-To build a clean copy (dev-only `tests/`/`evals/` and caches stripped) and install it in one
-step, use the bundled installer. It validates first, defaults to `~/.agents/skills/`, and
-refuses to replace an existing install unless you pass `--force`:
-
-```bash
-python -m scripts.install_skill ./skill-maker
-python -m scripts.install_skill ./skill-maker --target ./.agents/skills
-python -m scripts.install_skill ./skill-maker --force
-```
-
-`--target` takes any skills directory, and `--dry-run` reports what would happen without
-writing.
-
-Some hosts (a hosted skills app or a skills API) additionally accept a zipped `.skill`
-upload, a real, officially-tooled format on at least one major client (a `ZIP_DEFLATED`
-archive rooted at the skill folder's own contents, validated before zipping), not merely a
-generic convenience, though it remains absent from the open standard itself. If your client
-can surface a file to the user and they want a downloadable artifact, package it:
-
-```bash
-python -m scripts.package_skill ./skill-maker ./dist
-```
-
-This validates first, then writes `<name>.skill`. Hand the user the resulting path. The
-`.skill` zip is a client-specific packaging format, not part of the open standard; the
-portable artifact is always the folder.
-
----
-
-## Environment adaptations
-
-The loop above is the same everywhere, but the mechanics shift with what your runtime can
-do (subagents or not, a display or not, an agent CLI or not, a packaging tool or not).
-Rather than special-casing product names, adapt by capability. The full matrix (no
-subagents, no display, headless presentation, packaging, updating an installed
-skill in a read-only path) is in **`references/environment-adaptations.md`**. Read it when
-your environment lacks one of those capabilities.
-
-One rule that holds regardless of environment: when you run test cases, get the outputs in
-front of the human to review before you start critiquing and rewriting yourself. Present
-the outputs for review first.
-
----
-
-## Updating an existing skill
-
-The user may want to update an installed skill rather than create one. If so:
-
-- **Preserve the name.** Keep the directory name and the `name` frontmatter field
-  unchanged. If the skill is `research-helper`, the output stays `research-helper`, not
-  `research-helper-v2`.
-- **Copy to a writable location first.** Installed skill paths are often read-only. Copy
-  to `/tmp/<name>/`, edit there, validate and package from the copy.
-- **Re-validate after editing**, since a rename or a new frontmatter field can break
-  spec-conformance or portability.
-
----
+Read `references/evaluation.md` for the adapter contract, workspace artifacts,
+exit codes, benchmark diagnostics, and manual fallback. Read
+`references/description-optimization.md` for trigger tuning and
+`references/environment-adaptations.md` when capabilities are limited.
 
 ## Bundled resources
 
-Read these on demand; they are deliberately kept out of `SKILL.md` to honor the token
-budget.
-
-References:
-- `references/spec-reference.md` - exact agentskills.io frontmatter schema, naming rules, file structure, and the portable-vs-platform-locked distinction.
-- `references/spec-provenance.md` - which rules are spec-mandated, documented, or de-facto, and where `skills-ref` diverges from the spec.
-- `references/authoring-guide.md` - skill anatomy, progressive disclosure, writing patterns and style, and the full do's and don'ts.
-- `references/scripts.md` - writing and bundling scripts: one-off commands, inline dependencies, and agent-friendly design.
-- `references/evaluation.md` - the full test, grade, benchmark, review, and improve workflow.
-- `references/description-optimization.md` - the eval-driven method for tuning triggering.
-- `references/environment-adaptations.md` - capability-based adaptations for runtimes lacking subagents, a display, or a packaging tool.
-- `references/schemas.md` - JSON structures for evals.json, grading.json, benchmark.json, and the rest.
-
-Scripts (run as modules from the skill root, e.g. `python -m scripts.quick_validate`):
-- `scripts/quick_validate.py` - zero-network spec validator (fallback for `skills-ref validate`).
-- `scripts/eval_models.py` - strict versioned eval, trigger, and calibration contract loader.
-- `scripts/eval_adapter.py` - provider-neutral `skill-eval/v1` command adapter.
-- `scripts/eval_store.py` - atomic workspace artifacts and redacted append-only audit metadata.
-- `scripts/skill_eval.py` - audit, run, benchmark, and sandboxed improve CLI.
-- `scripts/package_skill.py` - validate then zip into a `.skill` for hosts that accept uploads.
-- `scripts/install_skill.py` - build a clean copy of a skill and install it into a skills directory.
-
-Assets:
-- `assets/eval_review.html` - template for the trigger-query review used in description optimization (Step 6); fill the placeholders by hand. There is no separate benchmark viewer; present benchmark results inline or as a `benchmark.md` summary.
-
-Evals (self-tests; not shipped - excluded from the packaged `.skill`):
-- `evals/` - versioned task and trigger cases, calibration labels, fixtures, and historical evidence.
+- `references/spec-reference.md`: portable frontmatter and body rules.
+- `references/authoring-guide.md`: anatomy, style, and progressive disclosure.
+- `references/evaluation.md`: audit, run, benchmark, improve, and manual workflows.
+- `references/schemas.md`: versioned eval, grading, benchmark, and history contracts.
+- `references/description-optimization.md`: trigger-query design and selection.
+- `references/environment-adaptations.md`: no-adapter, no-display, and packaging fallbacks.
+- `scripts/quick_validate.py`: zero-network validator.
+- `scripts/eval_models.py`: strict eval, trigger, and calibration loaders.
+- `scripts/eval_adapter.py`: provider-neutral command adapter.
+- `scripts/eval_store.py`: atomic artifacts and redacted append-only audit metadata.
+- `scripts/skill_eval.py`: `audit`, `run`, `benchmark`, and `improve` CLI.
+- `scripts/package_skill.py` and `scripts/install_skill.py`: distribution helpers.

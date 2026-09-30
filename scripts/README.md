@@ -41,6 +41,8 @@ python3 -m scripts.skill_eval audit . --workspace /tmp/skill-audit
 python3 -m scripts.skill_eval run . --workspace /tmp/skill-run \
   --adapter-arg python3 --adapter-arg /path/to/skill-eval-adapter.py
 python3 -m scripts.skill_eval benchmark . --workspace /tmp/skill-run
+python3 -m scripts.skill_eval improve . --workspace /tmp/skill-improve \
+  --max-iterations 3 --adapter-arg python3 --adapter-arg /path/to/skill-eval-adapter.py
 python3 -m unittest discover -s tests -t .             # unit tests (stdlib, no deps)
 python3 -m scripts.package_skill . ../../dist          # validate + zip -> dist/skill-maker.skill
 python3 -m scripts.install_skill . --target /tmp/skills --dry-run  # report an install

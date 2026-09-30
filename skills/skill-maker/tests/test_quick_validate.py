@@ -312,6 +312,34 @@ class TestValidateSkill(unittest.TestCase):
         self.assertIs(valid, False)
         self.assertIn("Metadata must be a mapping", message)
 
+    def test_rejects_non_string_allowed_tools(self):
+        content = "---\nname: my-skill\ndescription: x\nallowed-tools:\n  - Read\n---\nBody.\n"
+        skill_dir = self._write_skill("my-skill", content)
+        valid, message = validate_skill(skill_dir)
+        self.assertFalse(valid)
+        self.assertIn("Allowed tools must be a string", message)
+
+    def test_rejects_non_string_license(self):
+        content = "---\nname: my-skill\ndescription: x\nlicense:\n  - MIT\n---\nBody.\n"
+        skill_dir = self._write_skill("my-skill", content)
+        valid, message = validate_skill(skill_dir)
+        self.assertFalse(valid)
+        self.assertIn("License must be a string", message)
+
+    def test_rejects_non_string_metadata_values(self):
+        content = "---\nname: my-skill\ndescription: x\nmetadata:\n  author: [one]\n---\nBody.\n"
+        skill_dir = self._write_skill("my-skill", content)
+        valid, message = validate_skill(skill_dir)
+        self.assertFalse(valid)
+        self.assertIn("Metadata values must be strings", message)
+
+    def test_rejects_null_metadata(self):
+        content = "---\nname: my-skill\ndescription: x\nmetadata:\n---\nBody.\n"
+        skill_dir = self._write_skill("my-skill", content)
+        valid, message = validate_skill(skill_dir)
+        self.assertFalse(valid)
+        self.assertIn("Metadata must be a mapping", message)
+
     def test_accepts_path_given_as_string(self):
         # validate_skill accepts a str path as well as a Path.
         skill_dir = self._write_skill("my-skill", GOOD)

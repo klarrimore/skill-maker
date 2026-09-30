@@ -15,12 +15,24 @@ class TestCommandAdapter(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.output = self.tmp / "outputs"
         self.output.mkdir()
-        self.request = {"protocol": PROTOCOL, "operation": "task", "output_dir": str(self.output)}
+        self.request = {"protocol": PROTOCOL, "operation": "task", "run_id": "test-run", "output_dir": str(self.output)}
 
     def test_accepts_one_valid_response(self):
         code = "import json,sys; json.loads(sys.stdin.read()); print(json.dumps({'protocol':'skill-eval/v1','status':'ok','final':'ok','files':[]}))"
         result = CommandAdapter([sys.executable, "-c", code]).run(self.request)
         self.assertEqual(result.response["final"], "ok")
+
+    def test_rejects_unknown_operation(self):
+        code = "import json; print(json.dumps({'protocol':'skill-eval/v1','status':'ok','files':[]}))"
+        request = dict(self.request, operation="unknown")
+        with self.assertRaises(AdapterError):
+            CommandAdapter([sys.executable, "-c", code]).run(request)
+
+    def test_rejects_non_boolean_trigger_result(self):
+        code = "import json; print(json.dumps({'protocol':'skill-eval/v1','status':'ok','triggered':'yes','files':[]}))"
+        request = dict(self.request, operation="trigger")
+        with self.assertRaises(AdapterError):
+            CommandAdapter([sys.executable, "-c", code]).run(request)
 
     def test_rejects_file_outside_output_directory(self):
         code = "import json; print(json.dumps({'protocol':'skill-eval/v1','status':'ok','files':['../escape']}))"
@@ -52,6 +64,13 @@ class TestEvidenceStore(unittest.TestCase):
         self.assertNotIn("prompt", payload)
         self.assertNotIn("transcript", payload)
         self.assertNotIn("rubric", payload)
+
+    def test_audit_artifacts_must_stay_in_workspace(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        store = EvidenceStore(root, session_id="session")
+        with self.assertRaises(ValueError):
+            store.append_audit("task", "run", "adapter", True, "allow", "policy", "passed", [root.parent / "outside"])
 
 
 if __name__ == "__main__":

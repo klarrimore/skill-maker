@@ -23,7 +23,8 @@ python -m scripts.skill_eval improve ./target-skill --workspace /tmp/skill-impro
 The CLI emits one JSON result on stdout. Diagnostics belong on stderr. Exit codes are:
 
 - `0`: the requested operation completed without an error gate;
-- `1`: the operation completed but an audit, expectation, trigger, or benchmark error failed;
+- `1`: the operation completed but an audit, expectation, trigger, benchmark, or candidate
+  validation error failed;
 - `2`: usage, schema, path, adapter configuration, timeout, or other safety configuration error.
 
 `run` returns `1` when a baseline fails an expectation. That is evidence, not a missing row. A
@@ -68,6 +69,10 @@ stdout. Stderr is bounded diagnostics. The protocol is `skill-eval/v1`:
   "output_dir": "/workspace/run/outputs"
 }
 ```
+
+Expected outputs and trigger labels remain evaluator-only. They are not included in
+`task` or `trigger` requests, which prevents an adapter from passing by reading the
+answer key.
 
 The operation is `task`, `trigger`, `judge`, or `revise`. A successful response has `status`
 `ok`, optional `final` and `transcript`, a contained `files` list, and optional `metrics` with
@@ -119,6 +124,18 @@ pairs, mixed protocol versions, and partial repetitions. It reports pass-rate, d
 token mean, standard deviation, minimum, maximum, and with-skill-minus-baseline deltas. It also
 flags non-discriminating checks, high variance, missing metrics, adapter failures, uncalibrated
 judges, absent quality gain, and cost growth without quality gain.
+
+Use `benchmark --eval-id`, `--split`, and `--runs` when aggregating a deliberate
+subset. Without selectors, every eval in the suite and every contiguous repetition
+from 1 through the highest observed run must be present. Missing pairs, skipped
+repetitions, duplicate records, and records from another protocol are configuration
+errors. Missing provider metrics remain `null` and are skipped by candidate ranking,
+never treated as zero.
+
+Revision adapters receive a portable copy of the current candidate without its
+`evals/` or `tests/` trees. The evaluator restores the source-controlled eval suite
+to the candidate only after revision, so held-out prompts, labels, and results are
+not exposed through the revision source path.
 
 ## Sandboxed improvement
 

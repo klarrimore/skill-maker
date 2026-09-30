@@ -93,6 +93,12 @@ class EvidenceStore:
         status: str,
         artifacts: Optional[list] = None,
     ) -> None:
+        safe_artifacts = []
+        for item in (artifacts or []):
+            artifact_path = Path(item)
+            if not artifact_path.is_absolute():
+                artifact_path = self.workspace / artifact_path
+            safe_artifacts.append(str(self.contained(artifact_path)))
         entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "session_id": self.session_id,
@@ -103,7 +109,7 @@ class EvidenceStore:
             "decision": decision,
             "policy": policy,
             "status": status,
-            "artifacts": [str(item) for item in (artifacts or [])],
+            "artifacts": safe_artifacts,
         }
         # Construct the record from a fixed allowlist. Prompts, transcripts,
         # rubrics, credentials, and environment variables cannot enter this file.

@@ -29,7 +29,7 @@ from scripts.eval_models import (
 )
 from scripts.eval_store import EvidenceStore
 from scripts.quick_validate import ALLOWED_PROPERTIES, body_warnings, name_violation, validate_skill
-from scripts.utils import parse_frontmatter
+from scripts.utils import parse_frontmatter, should_exclude
 
 
 class ConfigurationError(RuntimeError):
@@ -411,7 +411,6 @@ def _request_for_task(skill_dir: Path, case: EvalCase, configuration: str, run_i
         "skill_path": str(skill_dir) if configuration == "with_skill" else None,
         "configuration": configuration,
         "prompt": case.prompt,
-        "expected_output": case.expected_output,
         "input_files": input_files,
         "output_dir": str(output_dir),
     }
@@ -550,17 +549,81 @@ def _stats(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def benchmark_records(rows: List[Dict[str, Any]], skill_dir: Path, workspace: Path) -> Dict[str, Any]:
+def benchmark_records(
+    rows: List[Dict[str, Any]],
+    skill_dir: Path,
+    workspace: Path,
+    expected_eval_ids: Optional[Sequence[int]] = None,
+    expected_runs: Optional[Sequence[int]] = None,
+) -> Dict[str, Any]:
     if not rows:
         raise ConfigurationError("no grading records found")
-    keys = {(row.get("eval_id"), row.get("run_number")) for row in rows}
-    for key in keys:
-        configs = {row.get("configuration") for row in rows if (row.get("eval_id"), row.get("run_number")) == key}
-        if configs != {"with_skill", "without_skill"}:
-            raise ConfigurationError("incomplete paired run for eval {} run {}".format(*key))
+
+    seen = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ConfigurationError("grading records must be objects")
+        if row.get("protocol") != PROTOCOL:
+            raise ConfigurationError("mixed or missing protocol in grading records")
+        eval_id = row.get("eval_id")
+        run_number = row.get("run_number")
+        configuration = row.get("configuration")
+        if not isinstance(eval_id, int) or isinstance(eval_id, bool):
+            raise ConfigurationError("grading record has an invalid eval_id")
+        if not isinstance(run_number, int) or isinstance(run_number, bool) or run_number < 1:
+            raise ConfigurationError("grading record has an invalid run_number")
+        if configuration not in {"with_skill", "without_skill"}:
+            raise ConfigurationError("grading record has an invalid configuration")
+        key = (eval_id, run_number, configuration)
+        if key in seen:
+            raise ConfigurationError("duplicate grading record for {}".format(key))
+        seen.add(key)
+        summary = row.get("summary")
+        if not isinstance(summary, dict) or not isinstance(summary.get("pass_rate"), (int, float)):
+            raise ConfigurationError("grading record {} has no numeric pass_rate".format(key))
+        if not isinstance(row.get("metrics", {}), dict):
+            raise ConfigurationError("grading record {} has invalid metrics".format(key))
+
+    observed_eval_ids = {row["eval_id"] for row in rows}
+    if expected_eval_ids is None:
+        selected_eval_ids = observed_eval_ids
+    else:
+        selected_eval_ids = set(expected_eval_ids)
+        unexpected = observed_eval_ids - selected_eval_ids
+        if unexpected:
+            raise ConfigurationError("grading records contain unselected evals: {}".format(sorted(unexpected)))
+        missing = selected_eval_ids - observed_eval_ids
+        if missing:
+            raise ConfigurationError("missing grading records for evals: {}".format(sorted(missing)))
+
+    observed_runs = {row["run_number"] for row in rows}
+    if expected_runs is None:
+        if not observed_runs:
+            raise ConfigurationError("no run numbers found")
+        selected_runs = set(range(1, max(observed_runs) + 1))
+    else:
+        selected_runs = set(expected_runs)
+        if not selected_runs or min(selected_runs) < 1:
+            raise ConfigurationError("expected runs must be positive")
+        unexpected_runs = observed_runs - selected_runs
+        if unexpected_runs:
+            raise ConfigurationError("grading records contain unselected runs: {}".format(sorted(unexpected_runs)))
+
+    for eval_id in sorted(selected_eval_ids):
+        for run_number in sorted(selected_runs):
+            configurations = {
+                row.get("configuration")
+                for row in rows
+                if row.get("eval_id") == eval_id and row.get("run_number") == run_number
+            }
+            if configurations != {"with_skill", "without_skill"}:
+                raise ConfigurationError("incomplete paired run for eval {} run {}".format(eval_id, run_number))
+
     configurations = {}
     for configuration in ("with_skill", "without_skill"):
-        configurations[configuration] = _stats([row for row in rows if row.get("configuration") == configuration])
+        configurations[configuration] = _stats([
+            row for row in rows if row.get("configuration") == configuration
+        ])
     with_rate = configurations["with_skill"]["pass_rate"]["mean"]
     without_rate = configurations["without_skill"]["pass_rate"]["mean"]
     diagnostics = []
@@ -569,6 +632,26 @@ def benchmark_records(rows: List[Dict[str, Any]], skill_dir: Path, workspace: Pa
             diagnostics.append({"severity": "error", "code": "adapter_failure", "eval_id": row.get("eval_id"), "evidence": row["adapter_error"]})
         if any(item.get("kind") == "judge" and not item.get("calibrated", False) for item in row.get("expectations", [])):
             diagnostics.append({"severity": "warning", "code": "uncalibrated_judge", "eval_id": row.get("eval_id"), "evidence": "judge result excluded from objective gate"})
+    paired = {}
+    for row in rows:
+        paired.setdefault((row.get("eval_id"), row.get("run_number")), {})[row.get("configuration")] = row
+    for (eval_id, run_number), pair in sorted(paired.items()):
+        with_row = pair.get("with_skill")
+        without_row = pair.get("without_skill")
+        if not with_row or not without_row:
+            continue
+        for index, (with_expectation, without_expectation) in enumerate(zip(
+            with_row.get("expectations", []), without_row.get("expectations", [])
+        )):
+            if with_expectation.get("passed") and without_expectation.get("passed"):
+                diagnostics.append({
+                    "severity": "warning",
+                    "code": "non_discriminating_expectation",
+                    "eval_id": eval_id,
+                    "run_number": run_number,
+                    "expectation_index": index,
+                    "evidence": "expectation passed in both configurations",
+                })
     for config, summary in configurations.items():
         if summary["pass_rate"]["stddev"] is not None and summary["pass_rate"]["stddev"] > 0.25:
             diagnostics.append({"severity": "warning", "code": "high_variance", "configuration": config, "evidence": summary["pass_rate"]["stddev"]})
@@ -595,14 +678,16 @@ def benchmark_records(rows: List[Dict[str, Any]], skill_dir: Path, workspace: Pa
             "errors": 1 if row.get("adapter_error") else 0,
         }
         benchmark_runs.append(item)
+    benchmark_runs.sort(key=lambda item: (item.get("eval_id"), item.get("run_number"), item.get("configuration")))
+    runs_per_configuration = len(selected_runs)
     report = {
         "protocol": PROTOCOL,
         "metadata": {
             "skill_name": _frontmatter(skill_dir).get("name", Path(skill_dir).name),
             "skill_path": str(Path(skill_dir).resolve()),
             "timestamp": _utc_now(),
-            "runs_per_configuration": len({row.get("run_number") for row in rows}),
-            "evals_run": sorted({row.get("eval_id") for row in rows}),
+            "runs_per_configuration": runs_per_configuration,
+            "evals_run": sorted(selected_eval_ids),
         },
         "runs": benchmark_runs,
         "configurations": configurations,
@@ -638,35 +723,111 @@ def benchmark_records(rows: List[Dict[str, Any]], skill_dir: Path, workspace: Pa
     return report
 
 
-def benchmark_skill(skill_dir: Path, workspace: Path) -> Dict[str, Any]:
-    paths = sorted(Path(workspace).resolve().rglob("grading.json"))
-    rows = []
+def benchmark_skill(
+    skill_dir: Path,
+    workspace: Path,
+    eval_ids: Optional[Sequence[int]] = None,
+    split: Optional[str] = None,
+    runs: Optional[int] = None,
+) -> Dict[str, Any]:
+    skill_dir = Path(skill_dir).resolve()
+    workspace = Path(workspace).resolve()
+    suite = load_eval_suite(skill_dir)
+    selected_cases = list(suite.evals)
+    if eval_ids:
+        wanted = set(eval_ids)
+        selected_cases = [case for case in selected_cases if case.id in wanted]
+        if len(selected_cases) != len(wanted):
+            raise ConfigurationError("an --eval-id does not exist")
+    if split:
+        selected_cases = [case for case in selected_cases if case.split == split]
+    if not selected_cases:
+        raise ConfigurationError("no eval cases selected")
+    selected_ids = {case.id for case in selected_cases}
+
+    paths = sorted(workspace.rglob("grading.json"))
+    all_rows = []
     for path in paths:
         try:
             row = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise ConfigurationError("invalid grading record {}: {}".format(path, exc))
-        if row.get("operation") == "trigger":
-            continue
+        if not isinstance(row, dict):
+            raise ConfigurationError("grading record {} must be an object".format(path))
         if row.get("protocol") != PROTOCOL:
             raise ConfigurationError("mixed or missing protocol in {}".format(path))
-        rows.append(row)
-    return benchmark_records(rows, Path(skill_dir).resolve(), Path(workspace).resolve())
+        if row.get("operation") == "trigger":
+            continue
+        try:
+            case = suite.by_id(row.get("eval_id"))
+        except EvalSchemaError as exc:
+            raise ConfigurationError("grading record {} references an unknown eval".format(path)) from exc
+        if row.get("eval_name") != case.name or row.get("split") != case.split:
+            raise ConfigurationError("grading record {} does not match eval definition".format(path))
+        all_rows.append(row)
+
+    rows = [row for row in all_rows if row.get("eval_id") in selected_ids]
+    if not rows:
+        raise ConfigurationError("no grading records found for selected evals")
+    if runs is not None:
+        rows = [
+            row for row in rows
+            if isinstance(row.get("run_number"), int)
+            and not isinstance(row.get("run_number"), bool)
+            and row["run_number"] <= runs
+        ]
+        if not rows:
+            raise ConfigurationError("no grading records found for selected runs")
+    observed_runs = {row.get("run_number") for row in rows}
+    if runs is None:
+        if not observed_runs or any(not isinstance(value, int) or isinstance(value, bool) or value < 1 for value in observed_runs):
+            raise ConfigurationError("grading records have invalid run numbers")
+        expected_runs = list(range(1, max(observed_runs) + 1))
+    else:
+        if not isinstance(runs, int) or isinstance(runs, bool) or runs < 1:
+            raise ConfigurationError("runs must be at least 1")
+        expected_runs = list(range(1, runs + 1))
+    return benchmark_records(
+        rows,
+        skill_dir,
+        workspace,
+        expected_eval_ids=sorted(selected_ids),
+        expected_runs=expected_runs,
+    )
 
 
-def _score(rows: List[Dict[str, Any]], split: str) -> Tuple[float, float, float, float]:
+def _score(rows: List[Dict[str, Any]], split: str) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[float]]:
     candidates = [row for row in rows if row.get("configuration") == "with_skill" and row.get("split") == split]
     objective_rates = []
     for row in candidates:
         objective = [item for item in row.get("expectations", []) if item.get("kind") != "judge"]
         if objective:
             objective_rates.append(sum(1 for item in objective if item.get("passed")) / float(len(objective)))
-    objective = _mean(objective_rates) or 0.0
+    objective = _mean(objective_rates)
     judge_items = [item for row in candidates for item in row.get("expectations", []) if item.get("kind") == "judge" and item.get("calibrated")]
-    judge_rate = _mean([1.0 if item["passed"] else 0.0 for item in judge_items]) or 0.0
+    judge_rate = _mean([1.0 if item["passed"] else 0.0 for item in judge_items])
     token_values = [row.get("metrics", {}).get("total_tokens") for row in candidates if isinstance(row.get("metrics", {}).get("total_tokens"), (int, float))]
     duration_values = [row.get("metrics", {}).get("duration_ms") for row in candidates if isinstance(row.get("metrics", {}).get("duration_ms"), (int, float))]
-    return objective, judge_rate, -(_mean([float(item) for item in token_values]) or 0.0), -(_mean([float(item) for item in duration_values]) or 0.0)
+    token_mean = _mean([float(item) for item in token_values])
+    duration_mean = _mean([float(item) for item in duration_values])
+    return (
+        objective,
+        judge_rate,
+        -token_mean if token_mean is not None else None,
+        -duration_mean if duration_mean is not None else None,
+    )
+
+
+def _compare_scores(candidate: Tuple[Optional[float], ...], incumbent: Tuple[Optional[float], ...]) -> int:
+    """Compare ordered scores without turning unavailable metrics into zero."""
+    for candidate_value, incumbent_value in zip(candidate, incumbent):
+        if candidate_value is None or incumbent_value is None:
+            continue
+        if candidate_value > incumbent_value:
+            return 1
+        if candidate_value < incumbent_value:
+            return -1
+    return 0
 
 
 def _revision_packet(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -691,6 +852,8 @@ def execute_triggers(skill_dir: Path, workspace: Path, adapter: CommandAdapter, 
     records = []
     for index, query in enumerate(queries):
         triggered = []
+        adapter_failed = False
+        error_messages = []
         for run_number in range(1, runs + 1):
             run_id = "trigger-{}-{}".format(index, run_number)
             run_dir = store.run_dir(run_id)
@@ -699,17 +862,25 @@ def execute_triggers(skill_dir: Path, workspace: Path, adapter: CommandAdapter, 
             request = {
                 "protocol": PROTOCOL, "operation": "trigger", "run_id": run_id,
                 "skill_path": str(Path(skill_dir).resolve()), "description": description,
-                "query": query["query"], "should_trigger": query["should_trigger"],
+                "query": query["query"],
                 "output_dir": str(output_dir),
             }
             try:
                 response = adapter.run(request).response
-                value = bool(response.get("triggered", False)) if response.get("status") == "ok" else False
-                status = "passed" if response.get("status") == "ok" else "failed"
+                if response.get("status") == "ok":
+                    value = response["triggered"]
+                    status = "passed"
+                else:
+                    value = False
+                    status = "failed"
+                    adapter_failed = True
+                    error_messages.append(response.get("error", "adapter returned an error"))
             except AdapterError as exc:
                 response = error_response(str(exc))
                 value = False
                 status = "failed"
+                adapter_failed = True
+                error_messages.append(str(exc))
             triggered.append(value)
             store.write_run(run_id, request, response, {
                 "protocol": PROTOCOL, "operation": "trigger", "query": query["query"],
@@ -718,7 +889,12 @@ def execute_triggers(skill_dir: Path, workspace: Path, adapter: CommandAdapter, 
             })
             store.append_audit("trigger", run_id, adapter.executable, True, "allow", "adapter-configured", status, [run_dir])
         rate = sum(1 for value in triggered if value) / float(runs)
-        records.append(dict(query, trigger_rate=rate, passed=(rate >= 0.5) == query["should_trigger"]))
+        records.append(dict(
+            query,
+            trigger_rate=rate,
+            passed=(not adapter_failed and (rate >= 0.5) == query["should_trigger"]),
+            adapter_error="; ".join(error_messages) if error_messages else None,
+        ))
     scores = {}
     for split in ("train", "held_out"):
         subset = [item for item in records if item["split"] == split]
@@ -730,6 +906,22 @@ def execute_triggers(skill_dir: Path, workspace: Path, adapter: CommandAdapter, 
     }
     store.write_json("trigger_results.json", report)
     return report
+
+def _copy_portable_skill(source: Path, destination: Path) -> None:
+    """Copy only files that belong to the distributable skill unit."""
+    source = Path(source).resolve()
+    destination = Path(destination).resolve()
+    destination.mkdir(parents=True, exist_ok=True)
+    for path in sorted(source.rglob("*")):
+        if not path.is_file() or path.is_symlink():
+            continue
+        relative = path.relative_to(source)
+        if should_exclude(Path(source.name) / relative):
+            continue
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(path), str(target))
+
 
 
 
@@ -744,6 +936,10 @@ def improve_skill(
 ) -> Dict[str, Any]:
     skill_dir = Path(skill_dir).resolve()
     workspace = Path(workspace).resolve()
+    if runs < 1:
+        raise ConfigurationError("runs must be at least 1")
+    if max_iterations < 0:
+        raise ConfigurationError("max_iterations cannot be negative")
     source_audit = _audit_skill(skill_dir)
     if not source_audit["passed"]:
         raise EvaluationFailure("source audit has errors")
@@ -786,14 +982,17 @@ def improve_skill(
             shutil.rmtree(str(candidate_container))
         candidate = candidate_container / suite.skill_name
         candidate_container.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(str(current), str(candidate))
-        revise_dir = workspace / "iterations" / version / "revision"
+        candidate.mkdir(parents=True, exist_ok=True)
+        revise_root = workspace / "iterations" / version / "revision"
+        revise_dir = revise_root / "output"
+        revision_source = revise_root / "source"
         revise_dir.mkdir(parents=True, exist_ok=True)
+        _copy_portable_skill(current, revision_source)
         request = {
             "protocol": PROTOCOL,
             "operation": "revise",
             "run_id": "{}-revise".format(version),
-            "skill_path": str(current),
+            "skill_path": str(revision_source),
             "candidate_path": str(candidate),
             "training_failures": packet,
             "output_dir": str(revise_dir),
@@ -804,6 +1003,21 @@ def improve_skill(
         except AdapterError as exc:
             revision = error_response(str(exc))
             revision_error = str(exc)
+        if not revision_error:
+            try:
+                evals_destination = candidate / "evals"
+                if evals_destination.exists():
+                    shutil.rmtree(str(evals_destination))
+                shutil.copytree(str(skill_dir / "evals"), str(evals_destination))
+            except OSError as exc:
+                revision_error = "could not attach evaluation data to candidate: {}".format(exc)
+        revision_store = EvidenceStore(workspace)
+        revision_store.write_run(request["run_id"], request, revision, {
+            "protocol": PROTOCOL,
+            "operation": "revise",
+            "status": "failed" if revision_error else "passed",
+            "error": revision_error,
+        })
         EvidenceStore(workspace).append_audit("revise", request["run_id"], adapter.executable, True, "allow", "training-only-revision", "failed" if revision_error else "passed", [candidate])
         candidate_audit = _audit_skill(candidate) if not revision_error else {"passed": False, "summary": {"errors": 1}, "findings": [{"id": "revision.error", "severity": "error", "evidence": revision_error}]}
         if not candidate_audit["passed"]:
@@ -816,12 +1030,13 @@ def improve_skill(
         candidate_rows = evaluate(version, candidate)
         incumbent_score = _score(current_rows, "held_out")
         candidate_score = _score(candidate_rows, "held_out")
-        if candidate_score > incumbent_score:
+        comparison = _compare_scores(candidate_score, incumbent_score)
+        if comparison > 0:
             result = "won"
             current = candidate
             current_version = version
             current_rows = candidate_rows
-        elif candidate_score == incumbent_score:
+        elif comparison == 0:
             result = "tie"
         else:
             result = "lost"
@@ -893,6 +1108,9 @@ def _build_parser() -> argparse.ArgumentParser:
     benchmark = sub.add_parser("benchmark")
     benchmark.add_argument("skill")
     benchmark.add_argument("--workspace", required=True)
+    benchmark.add_argument("--runs", type=int)
+    benchmark.add_argument("--eval-id", type=int, action="append")
+    benchmark.add_argument("--split", choices=["train", "held_out"])
     improve = sub.add_parser("improve")
     improve.add_argument("skill")
     improve.add_argument("--workspace", required=True)
@@ -931,13 +1149,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(json.dumps(result, sort_keys=True))
             return 0 if result["status"] == "passed" else 1
         if args.command == "benchmark":
-            result = benchmark_skill(skill_dir, Path(args.workspace))
+            result = benchmark_skill(skill_dir, Path(args.workspace), args.eval_id, args.split, args.runs)
             print(json.dumps(result, sort_keys=True))
             return 0 if not any(item.get("severity") == "error" for item in result["diagnostics"]) else 1
         if args.command == "improve":
             result = improve_skill(skill_dir, Path(args.workspace), _adapter_from_args(args), args.runs, args.max_iterations, args.allow_command_checks)
             print(json.dumps(result, sort_keys=True))
-            return 0
+            invalid = any(item.get("grading_result") == "invalid" for item in result.get("iterations", []))
+            return 1 if invalid else 0
         raise ConfigurationError("unknown command")
     except EvaluationFailure as exc:
         print(json.dumps({"protocol": PROTOCOL, "status": "failed", "error": str(exc)}))
