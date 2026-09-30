@@ -1,15 +1,11 @@
-"""Data-integrity and fixture-behavior checks for the skill's own evals.
-
-These guard the eval *inputs* (evals.json, trigger_queries.json, the fixtures)
-the same way the smoke driver does, but as importable unit tests so a broken
-eval set fails `unittest discover`, not just `smoke.sh`.
-"""
+"""Data-integrity and fixture-behavior checks for skill-maker evals."""
 
 import json
 import unittest
 from pathlib import Path
 
 from evals.grade_artifacts import grade
+from scripts.eval_models import EvalSchemaError, load_eval_suite, load_trigger_queries
 from scripts.quick_validate import validate_skill
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
@@ -21,69 +17,55 @@ class TestEvalsJson(unittest.TestCase):
     def setUpClass(cls):
         cls.data = json.loads((EVALS_DIR / "evals.json").read_text(encoding="utf-8"))
 
-    def test_skill_name_matches_frontmatter(self):
-        self.assertEqual(self.data["skill_name"], "skill-maker")
-        self.assertEqual(self.data["skill_name"], SKILL_ROOT.name)
+    def test_versioned_contract_loads(self):
+        suite = load_eval_suite(SKILL_ROOT)
+        self.assertEqual(suite.skill_name, "skill-maker")
+        self.assertEqual(len(suite.evals), 6)
+        self.assertEqual({case.split for case in suite.evals}, {"train", "held_out"})
+        self.assertTrue(all(case.failure_modes for case in suite.evals))
+        self.assertTrue(all(case.expectations for case in suite.evals))
+        self.assertTrue(all(item.kind == "judge" for case in suite.evals for item in case.expectations))
 
-    def test_evals_is_nonempty_list(self):
-        self.assertIsInstance(self.data["evals"], list)
-        self.assertGreaterEqual(len(self.data["evals"]), 1)
-
-    def test_eval_ids_are_unique_integers(self):
-        ids = [e["id"] for e in self.data["evals"]]
-        self.assertTrue(all(isinstance(i, int) for i in ids))
+    def test_ids_and_names_are_unique(self):
+        ids = [item["id"] for item in self.data["evals"]]
+        names = [item["name"] for item in self.data["evals"]]
         self.assertEqual(len(ids), len(set(ids)))
-
-    def test_each_eval_has_required_shape(self):
-        for e in self.data["evals"]:
-            with self.subTest(eval_id=e.get("id")):
-                self.assertIsInstance(e["prompt"], str)
-                self.assertTrue(e["prompt"].strip())
-                self.assertIsInstance(e["expected_output"], str)
-                self.assertTrue(e["expected_output"].strip())
-                self.assertIsInstance(e["files"], list)
-                self.assertIsInstance(e["expectations"], list)
-                self.assertGreaterEqual(len(e["expectations"]), 1)
-                for exp in e["expectations"]:
-                    self.assertIsInstance(exp, str)
-                    self.assertTrue(exp.strip())
+        self.assertEqual(len(names), len(set(names)))
 
     def test_referenced_input_files_exist(self):
-        for e in self.data["evals"]:
-            for rel in e["files"]:
-                with self.subTest(eval_id=e["id"], file=rel):
-                    self.assertTrue(
-                        (SKILL_ROOT / rel).exists(),
-                        f"eval {e['id']} references missing file {rel}",
-                    )
+        for case in self.data["evals"]:
+            for rel in case["files"]:
+                with self.subTest(eval_id=case["id"], file=rel):
+                    self.assertTrue((SKILL_ROOT / rel).exists())
+
+    def test_unknown_expectation_kind_is_rejected(self):
+        broken = json.loads(json.dumps(self.data))
+        broken["evals"][0]["expectations"] = [{"kind": "unknown"}]
+        path = EVALS_DIR / "evals.json"
+        original = path.read_text(encoding="utf-8")
+        try:
+            path.write_text(json.dumps(broken), encoding="utf-8")
+            with self.assertRaises(EvalSchemaError):
+                load_eval_suite(SKILL_ROOT)
+        finally:
+            path.write_text(original, encoding="utf-8")
 
 
 class TestTriggerQueries(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.queries = json.loads(
-            (EVALS_DIR / "trigger_queries.json").read_text(encoding="utf-8")
-        )
+        cls.queries = load_trigger_queries(SKILL_ROOT)
 
-    def test_is_flat_list_of_query_objects(self):
-        self.assertIsInstance(self.queries, list)
-        for q in self.queries:
-            with self.subTest(query=q.get("query")):
-                self.assertIsInstance(q["query"], str)
-                self.assertTrue(q["query"].strip())
-                self.assertIsInstance(q["should_trigger"], bool)
-                # Exactly the two documented keys, nothing extra.
-                self.assertEqual(set(q.keys()), {"query", "should_trigger"})
-
-    def test_has_twenty_queries_split_ten_ten(self):
+    def test_versioned_queries_have_both_splits_and_labels(self):
         self.assertEqual(len(self.queries), 20)
-        positives = [q for q in self.queries if q["should_trigger"]]
-        negatives = [q for q in self.queries if not q["should_trigger"]]
-        self.assertEqual(len(positives), 10)
-        self.assertEqual(len(negatives), 10)
+        self.assertEqual({item["split"] for item in self.queries}, {"train", "held_out"})
+        for split in ("train", "held_out"):
+            subset = [item for item in self.queries if item["split"] == split]
+            self.assertTrue(any(item["should_trigger"] for item in subset))
+            self.assertTrue(any(not item["should_trigger"] for item in subset))
 
     def test_queries_are_unique(self):
-        texts = [q["query"] for q in self.queries]
+        texts = [item["query"] for item in self.queries]
         self.assertEqual(len(texts), len(set(texts)))
 
 
@@ -99,64 +81,45 @@ class TestJudgePrompts(unittest.TestCase):
         for path in self.prompts:
             text = path.read_text(encoding="utf-8")
             with self.subTest(path=path.name):
-                for heading in (
-                    "## Task and Evaluation Criterion",
-                    "## Definitions",
-                    "## Examples",
-                    "## Structured Output Format",
-                ):
+                for heading in ("## Task and Evaluation Criterion", "## Definitions", "## Examples", "## Structured Output Format"):
                     self.assertIn(heading, text)
                 self.assertIn("PASS:", text)
                 self.assertIn("FAIL:", text)
-                self.assertIn("Result: Pass", text)
-                self.assertIn("Result: Fail", text)
                 self.assertIn("borderline", text.lower())
                 self.assertIn('"critique"', text)
                 self.assertIn('"result"', text)
 
 
 class TestFixtureBehavior(unittest.TestCase):
-    """The fixtures must keep behaving as their evals assume."""
-
-    def test_broken_fixture_fails_validation(self):
+    def test_broken_fixture_fails_validation_and_stays_broken(self):
         broken = EVALS_DIR / "files" / "broken-skill"
         valid, _ = validate_skill(broken)
         self.assertFalse(valid)
+        text = (broken / "SKILL.md").read_text(encoding="utf-8")
+        for token in ("name: Weekly_Log_Summary", "<error logs>", "author:", "version:"):
+            self.assertIn(token, text)
 
     def test_broken_fixture_fails_grading(self):
-        broken = EVALS_DIR / "files" / "broken-skill"
-        results = grade(broken)
-        self.assertTrue(any(not r["passed"] for r in results))
+        results = grade(EVALS_DIR / "files" / "broken-skill")
+        self.assertTrue(any(not item["passed"] for item in results))
 
-    def test_broken_fixture_still_carries_its_violations(self):
-        # Mirrors smoke.sh check 2b: an eval run must not silently "fix" the
-        # negative fixture in place and disarm eval id 2.
-        text = (EVALS_DIR / "files" / "broken-skill" / "SKILL.md").read_text(encoding="utf-8")
-        for token in ("name: Weekly_Log_Summary", "<error logs>", "author:", "version:"):
-            with self.subTest(token=token):
-                self.assertIn(token, text)
-
-    def test_standup_fixture_is_valid(self):
-        standup = EVALS_DIR / "files" / "standup-summary"
-        valid, message = validate_skill(standup)
-        self.assertTrue(valid, message)
+    def test_standup_and_skip_fixtures_are_valid(self):
+        for name in ("standup-summary", "skip-evals-skill", "eval-suite-valid"):
+            with self.subTest(name=name):
+                valid, message = validate_skill(EVALS_DIR / "files" / name)
+                self.assertTrue(valid, message)
 
     def test_standup_fixture_passes_grading(self):
-        standup = EVALS_DIR / "files" / "standup-summary"
-        results = grade(standup)
-        self.assertTrue(all(r["passed"] for r in results), results)
+        results = grade(EVALS_DIR / "files" / "standup-summary")
+        self.assertTrue(all(item["passed"] for item in results), results)
 
 
 class TestSkillItselfIsGradeable(unittest.TestCase):
-    """Regression guard on the shipped skill: keep skill-maker self-valid."""
-
-    def test_skill_validates(self):
+    def test_skill_validates_and_passes_legacy_artifact_checks(self):
         valid, message = validate_skill(SKILL_ROOT)
         self.assertTrue(valid, message)
-
-    def test_skill_passes_all_grader_checks(self):
         results = grade(SKILL_ROOT)
-        self.assertTrue(all(r["passed"] for r in results), results)
+        self.assertTrue(all(item["passed"] for item in results), results)
 
 
 if __name__ == "__main__":

@@ -18,9 +18,14 @@ Run from the skill directory:
 cd skills/skill-maker
 pip install -r requirements.txt
 python -m scripts.quick_validate .
+python -m scripts.skill_eval audit . --workspace /tmp/skill-maker-audit
 python -m scripts.package_skill . ../../dist
 python -m scripts.install_skill .            # installs to ~/.agents/skills/
 ```
+
+The evaluation CLI is provider-neutral. Configure an executable that implements the
+`skill-eval/v1` JSON protocol for `run` and `improve`; `audit` and `benchmark` remain
+offline. See `skills/skill-maker/references/evaluation.md`.
 
 ## Requirements
 
@@ -46,6 +51,10 @@ skill-maker/                         repository (workspace)
         schemas.md
       scripts/                       run as modules from this directory
         quick_validate.py            zero-network spec validator
+        eval_models.py               versioned eval contract loader
+        eval_adapter.py              skill-eval/v1 command adapter
+        eval_store.py                atomic evidence and redacted audit log
+        skill_eval.py                audit, run, benchmark, improve CLI
         package_skill.py             validate then zip into a .skill
         install_skill.py             build a clean copy then install it into a skills dir
         utils.py                     shared SKILL.md parsing + build-exclusion rules
@@ -53,11 +62,12 @@ skill-maker/                         repository (workspace)
         eval_review.html             review-view template
       LICENSE.txt                    Apache-2.0
       tests/                         dev-only; kept in source control, excluded from the .skill
-      evals/                         dev-only; task evals, trigger queries, grader, fixtures
+      evals/                         dev-only; versioned cases, fixtures, and evidence
         README.md
-        evals.json                   task-eval definitions
-        trigger_queries.json         should- and should-not-trigger cases
-        grade_artifacts.py           code-check grader, emits grading.json
+        evals.json                   typed task-eval definitions
+        trigger_queries.json         versioned trigger cases with train/held-out splits
+        judge_labels.json             held-out judge calibration labels
+        grade_artifacts.py           compatibility wrapper for shipped artifact grading
         failure-modes.md             FM-1 through FM-16 error-analysis catalogue
         judges/                      seed LLM-as-judge prompts for subjective self-improvement checks
         files/                       valid and broken skill fixtures
@@ -86,8 +96,16 @@ python -m scripts.quick_validate .    # bundled fallback
 python -m scripts.package_skill . ../../dist
 ```
 
-The evaluation and description-optimization loops are run by hand; see
-`skills/skill-maker/references/evaluation.md` and
+Run the automated audit/evaluation loop when an explicit `skill-eval/v1` adapter is available;
+otherwise use the documented manual fallback:
+
+```bash
+python -m scripts.skill_eval audit . --workspace /tmp/skill-audit
+python -m scripts.skill_eval run . --workspace /tmp/skill-run --adapter-arg python3 --adapter-arg ADAPTER
+python -m scripts.skill_eval benchmark . --workspace /tmp/skill-run
+```
+
+See `skills/skill-maker/references/evaluation.md` and
 `skills/skill-maker/references/description-optimization.md`.
 
 ## Install and use the skill

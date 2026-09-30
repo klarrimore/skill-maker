@@ -99,12 +99,77 @@ test ! -e "$INSTALL_DRYRUN"
 check "install: dry-run writes nothing" 0 $?
 rm -rf "$INSTALL_TARGET" "$INSTALL_DRYRUN"
 
-# 6. Eval-review UI renders from real data (all placeholders filled)
+# 6. Generic evaluator: offline audit, paired run, benchmark, and sandboxed improve
+GENERIC_WORKSPACE="$(mktemp -d)"
+python3 -m scripts.skill_eval audit evals/files/eval-suite-valid --workspace "$GENERIC_WORKSPACE/audit" >/dev/null 2>&1
+check "eval: offline audit passes" 0 $?
+python3 -m scripts.skill_eval run evals/files/eval-suite-valid --workspace "$GENERIC_WORKSPACE/run" \
+  --runs 1 --adapter-arg python3 --adapter-arg tests/fixtures/fake_eval_adapter.py >/dev/null 2>&1
+check "eval: paired run records baseline failures" 1 $?
+test -f "$GENERIC_WORKSPACE/run/runs/1-with_skill-1/grading.json"
+check "eval: with-skill grading record exists" 0 $?
+test -f "$GENERIC_WORKSPACE/run/runs/1-without_skill-1/grading.json"
+check "eval: baseline grading record exists" 0 $?
+python3 -m scripts.skill_eval benchmark evals/files/eval-suite-valid --workspace "$GENERIC_WORKSPACE/run" >/dev/null 2>&1
+check "eval: benchmark produced" 0 $?
+python3 -m scripts.skill_eval improve evals/files/eval-suite-valid --workspace "$GENERIC_WORKSPACE/improve" \
+  --max-iterations 2 --runs 1 --adapter-arg python3 --adapter-arg tests/fixtures/fake_eval_adapter.py >/dev/null 2>&1
+check "eval: held-out candidate promoted" 0 $?
+python3 - "$GENERIC_WORKSPACE/improve" <<'EOF' >/dev/null 2>&1
+import sys
+from pathlib import Path
+from scripts.quick_validate import validate_skill
+root = Path(sys.argv[1])
+best = root / "best-skill" / "eval-suite-valid"
+valid, message = validate_skill(best)
+assert valid, message
+assert (root / "history.json").exists()
+EOF
+check "eval: promoted copy revalidates" 0 $?
+python3 - "$SKILL_DIR/evals/files/eval-suite-valid" "$GENERIC_WORKSPACE/improve" <<'EOF' >/dev/null 2>&1
+import hashlib
+import sys
+from pathlib import Path
+def digest(root):
+    values = []
+    for path in sorted(Path(root).rglob("*")):
+        if path.is_file() and "__pycache__" not in path.parts:
+            values.append((str(path.relative_to(root)), hashlib.sha256(path.read_bytes()).hexdigest()))
+    return values
+assert digest(sys.argv[1]) == digest(Path(sys.argv[2]) / "candidates" / "v0" / "eval-suite-valid")
+EOF
+check "eval: source fixture remains byte-identical" 0 $?
+rm -rf "$GENERIC_WORKSPACE"
+
+# 6b. Shipped evaluator scripts survive packaging and installation, while dev trees do not
+python3 - "$DIST/skill-maker.skill" <<'EOF'
+import sys, zipfile
+names = set(zipfile.ZipFile(sys.argv[1]).namelist())
+required = {"scripts/eval_models.py", "scripts/eval_adapter.py", "scripts/eval_store.py", "scripts/skill_eval.py"}
+assert required <= names
+assert not any(name.startswith("tests/") or name.startswith("evals/") for name in names)
+EOF
+check "package: evaluator scripts included" 0 $?
+INSTALL_SKILL_MAKER="$(mktemp -d)"
+python3 -m scripts.install_skill . --target "$INSTALL_SKILL_MAKER" >/dev/null 2>&1
+check "install: skill-maker with evaluator scripts" 0 $?
+test -f "$INSTALL_SKILL_MAKER/skill-maker/scripts/skill_eval.py"
+check "install: evaluator CLI at destination" 0 $?
+python3 - "$INSTALL_SKILL_MAKER/skill-maker" <<'EOF' >/dev/null 2>&1
+import sys
+from pathlib import Path
+bad = [path for path in Path(sys.argv[1]).rglob("*") if any(part in ("tests", "evals") for part in path.parts)]
+assert not bad, bad
+EOF
+check "install: target dev trees excluded" 0 $?
+rm -rf "$INSTALL_SKILL_MAKER"
+
+# 7. Eval-review UI renders from real data (all placeholders filled)
 cd "$REPO_ROOT"
 python3 scripts/render_review.py "$SKILL_DIR" /tmp/eval_review_rendered.html >/dev/null 2>&1
 check "render: eval_review.html filled from real data" 0 $?
 
-# 7. Screenshot the rendered UI (skipped when no chrome)
+# 8. Screenshot the rendered UI (skipped when no chrome)
 if command -v google-chrome >/dev/null; then
   timeout 60 google-chrome --headless --disable-gpu --window-size=1200,1600 \
     --screenshot=/tmp/eval_review_screenshot.png file:///tmp/eval_review_rendered.html >/dev/null 2>&1

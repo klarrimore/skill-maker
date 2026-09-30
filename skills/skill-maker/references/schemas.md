@@ -6,75 +6,137 @@ This document defines the JSON schemas used by skill-maker.
 
 ## evals.json
 
-Defines the evals for a skill. Located at `evals/evals.json` within the skill directory.
+`evals/evals.json` is version 1 of the repository-native task contract. The
+loader in `scripts.eval_models` rejects unknown fields, duplicate ids/names,
+empty expectations, missing inputs, and paths that escape the skill root.
 
 ```json
 {
+  "version": 1,
   "skill_name": "example-skill",
   "evals": [
     {
       "id": 1,
-      "prompt": "User's example prompt",
-      "expected_output": "Description of expected result",
-      "files": ["evals/files/sample1.pdf"],
+      "name": "csv-summary",
+      "split": "held_out",
+      "prompt": "Summarize the attached CSV.",
+      "expected_output": "A summary report is produced.",
+      "files": ["evals/files/sample.csv"],
+      "failure_modes": ["FM-2"],
       "expectations": [
-        "The output includes X",
-        "The skill used script Y"
+        {"kind": "file_exists", "path": "summary.json"},
+        {"kind": "json_value", "path": "summary.json", "key": "rows", "equals": 10},
+        {"kind": "text_contains", "target": "final", "value": "summary"}
       ]
     }
   ]
 }
 ```
 
-**Fields:**
-- `skill_name`: Name matching the skill's frontmatter
-- `evals[].id`: Unique integer identifier
-- `evals[].prompt`: The task to execute
-- `evals[].expected_output`: Human-readable description of success
-- `evals[].files`: Optional list of input file paths (relative to skill root)
-- `evals[].expectations`: List of verifiable statements
+Required case fields are `id`, `name`, `split` (`train` or `held_out`),
+`prompt`, `expected_output`, `files`, `failure_modes`, and non-empty typed
+`expectations`. Expectation kinds are:
+
+- `file_exists`: output path relative to the run's `outputs/` directory.
+- `text_contains` and `text_excludes`: `target` is `final` or `transcript`,
+  plus a literal `value`.
+- `regex`: `target` plus a Python regular-expression `pattern`.
+- `json_value`: output `path`, dotted `key`, and JSON `equals` value.
+- `validator`: expected `valid` boolean, optionally with a skill-relative
+  `path`.
+- `command`: literal `argv`, optional `exit_code` and bounded
+  `timeout_seconds`; denied unless `--allow-command-checks` is explicit.
+- `judge`: skill-relative `rubric` and expected binary `result` (`pass` or
+  `fail`). Judge results do not count as a calibrated benchmark gate until
+  `evals/judge_labels.json` has a held-out human label for that rubric.
+
+Input and rubric paths are relative to the skill root. Output paths are
+relative to the assigned run output directory. All are containment-checked.
+
+---
+
+## trigger_queries.json
+
+The versioned trigger input uses an object rather than the legacy flat array:
+
+```json
+{
+  "version": 1,
+  "queries": [
+    {"query": "turn this workflow into a skill", "should_trigger": true, "split": "train"}
+  ]
+}
+```
+
+Each query has a unique `query`, boolean `should_trigger`, and `split`.
+Both labels and both splits are required. Trigger runs use at least three
+repetitions and a 0.5 trigger-rate threshold.
+
+---
+
+## judge_labels.json
+
+Human calibration labels are kept separate from prompts and model results:
+
+```json
+{
+  "version": 1,
+  "labels": [
+    {
+      "rubric": "evals/judges/scope.md",
+      "example": "The candidate preserves unrelated behavior.",
+      "result": "pass",
+      "split": "held_out"
+    }
+  ]
+}
+```
+
+`rubric`, `example`, `result`, and `split` are required. A held-out label is
+required before a judge expectation can contribute to an improvement gate.
 
 ---
 
 ## trigger_results.json
 
-The record of a description-optimization run (Step 6). Written to the run workspace so the
-train/held-out split, the per-query trigger rates, and the winning score are auditable
-rather than living only in the conversation.
+The record of a trigger-evaluation run. It is written to the run workspace so
+the train/held-out split, per-query trigger rates, and selected score remain
+auditable rather than living only in the conversation.
 
 ```json
 {
+  "protocol": "skill-eval/v1",
   "skill_name": "meeting-actions",
-  "description_before": "Processes meeting transcripts.",
-  "description_after": "Turns meeting transcripts into action-item lists...",
+  "description": "Turns meeting transcripts into action-item lists.",
   "runs_per_query": 3,
   "threshold": 0.5,
   "runs": [
     {
-      "query": "can you pull the action items out of this transcript?",
+      "query": "pull the action items out of this transcript",
       "should_trigger": true,
       "split": "train",
-      "trigger_rates": { "before": 0.33, "after": 1.0 }
+      "trigger_rate": 1.0,
+      "passed": true
     }
   ],
-  "scores": {
-    "before": { "train": 0.60, "held_out": 0.40 },
-    "after": { "train": 0.90, "held_out": 0.85 }
-  },
-  "selected": "after"
+  "scores": {"train": 0.90, "held_out": 0.85},
+  "selected": "current"
 }
 ```
 
 **Fields:**
-- `skill_name`: Name matching the skill's frontmatter
-- `description_before` / `description_after`: The descriptions compared
-- `runs_per_query`: How many times each query was run (at least 3)
-- `threshold`: Trigger-rate cutoff for a pass (0.5)
-- `runs[].query` / `runs[].should_trigger`: The eval set entry
-- `runs[].split`: `"train"` or `"held_out"`
-- `runs[].trigger_rates`: Trigger rate per candidate description
-- `scores`: Aggregate train and held-out scores per candidate
-- `selected`: Which candidate won, chosen by the held-out score
+- `protocol`: `skill-eval/v1`.
+- `skill_name`: Name matching the skill's frontmatter.
+- `description`: Description evaluated by the adapter.
+- `runs_per_query`: How many times each query was run; at least 3.
+- `threshold`: Trigger-rate cutoff for a pass (`0.5`).
+- `runs[].query` / `runs[].should_trigger`: The eval-set entry.
+- `runs[].split`: `"train"` or `"held_out"`.
+- `runs[].trigger_rate`: Fraction of repetitions that triggered.
+- `runs[].passed`: Whether the observed rate matches the expected label.
+- `scores`: Aggregate train and held-out query scores.
+- `selected`: Current description selection; candidate revision remains a
+  separate operation.
 
 ---
 
@@ -84,32 +146,33 @@ Tracks version progression in Improve mode. Located at workspace root.
 
 ```json
 {
-  "started_at": "2026-01-15T10:30:00Z",
+  "protocol": "skill-eval/v1",
+  "started_at": "2026-09-30T10:30:00+00:00",
   "skill_name": "pdf",
-  "current_best": "v2",
+  "current_best": "v1",
   "iterations": [
     {
       "version": "v0",
       "parent": null,
-      "expectation_pass_rate": 0.65,
+      "train_score": [0.65, 0.0, -1200.0, -30.0],
+      "held_out_score": [0.65, 0.0, -1200.0, -30.0],
+      "validation": {"valid": true},
+      "audit": {"passed": true},
       "grading_result": "baseline",
       "is_current_best": false
     },
     {
       "version": "v1",
       "parent": "v0",
-      "expectation_pass_rate": 0.75,
-      "grading_result": "won",
-      "is_current_best": false
-    },
-    {
-      "version": "v2",
-      "parent": "v1",
-      "expectation_pass_rate": 0.85,
+      "train_score": [0.90, 0.0, -1300.0, -32.0],
+      "held_out_score": [0.85, 0.0, -1250.0, -31.0],
+      "validation": {"valid": true},
+      "audit": {"passed": true},
       "grading_result": "won",
       "is_current_best": true
     }
-  ]
+  ],
+  "best_skill": "/tmp/improve/best-skill/pdf"
 }
 ```
 
@@ -117,88 +180,72 @@ Tracks version progression in Improve mode. Located at workspace root.
 - `started_at`: ISO timestamp of when improvement started
 - `skill_name`: Name of the skill being improved
 - `current_best`: Version identifier of the best performer
-- `iterations[].version`: Version identifier (v0, v1, ...)
+- `iterations[].version`: Version identifier (`v0`, `v1`, ...)
 - `iterations[].parent`: Parent version this was derived from
-- `iterations[].expectation_pass_rate`: Pass rate from grading
-- `iterations[].grading_result`: "baseline", "won", "lost", or "tie"
+- `iterations[].train_score` / `held_out_score`: ordered score tuples of
+  objective pass rate, calibrated judge pass rate, negative token mean, and
+  negative duration mean
+- `iterations[].validation` / `iterations[].audit`: candidate checks
+- `iterations[].grading_result`: `baseline`, `won`, `lost`, `tie`, or `invalid`
 - `iterations[].is_current_best`: Whether this is the current best version
+- `best_skill`: Workspace path to the revalidated
+  `best-skill/<skill-name>/` copy
 
 ---
 
 ## grading.json
 
-Output from the grader agent. Located at `<run-dir>/grading.json`.
+Output from the `skill-eval/v1` runner. Located at
+`<workspace>/runs/<run-id>/grading.json`.
 
 ```json
 {
+  "protocol": "skill-eval/v1",
+  "eval_id": 1,
+  "eval_name": "csv-summary",
+  "split": "held_out",
+  "configuration": "with_skill",
+  "run_number": 1,
+  "status": "passed",
   "expectations": [
     {
-      "text": "The output includes the name 'John Smith'",
+      "kind": "file_exists",
+      "text": "file_exists: {\"path\": \"summary.json\"}",
       "passed": true,
-      "evidence": "Found in transcript Step 3: 'Extracted names: John Smith, Sarah Johnson'"
-    },
-    {
-      "text": "The spreadsheet has a SUM formula in cell B10",
-      "passed": false,
-      "evidence": "No spreadsheet was created. The output was a text file."
+      "evidence": "summary.json exists"
     }
   ],
   "summary": {
-    "passed": 2,
-    "failed": 1,
-    "total": 3,
-    "pass_rate": 0.67
+    "passed": 1,
+    "failed": 0,
+    "total": 1,
+    "pass_rate": 1.0
   },
-  "execution_metrics": {
-    "tool_calls": {
-      "Read": 5,
-      "Write": 2,
-      "Bash": 8
-    },
-    "total_tool_calls": 15,
-    "total_steps": 6,
-    "errors_encountered": 0,
-    "output_chars": 12450,
-    "transcript_chars": 3200
+  "metrics": {
+    "duration_ms": 1200,
+    "total_tokens": null,
+    "tool_calls": null
   },
-  "timing": {
-    "executor_duration_seconds": 165.0,
-    "grader_duration_seconds": 26.0,
-    "total_duration_seconds": 191.0
-  },
-  "claims": [
-    {
-      "claim": "The form has 12 fillable fields",
-      "type": "factual",
-      "verified": true,
-      "evidence": "Counted 12 fields in field_info.json"
-    }
-  ],
-  "user_notes_summary": {
-    "uncertainties": ["Used 2023 data, may be stale"],
-    "needs_review": [],
-    "workarounds": ["Fell back to text overlay for non-fillable fields"]
-  },
-  "eval_feedback": {
-    "suggestions": [
-      {
-        "assertion": "The output includes the name 'John Smith'",
-        "reason": "A hallucinated document that mentions the name would also pass"
-      }
-    ],
-    "overall": "Assertions check presence but not correctness."
-  }
+  "adapter_error": null,
+  "artifacts": ["outputs/summary.json"]
 }
 ```
 
 **Fields:**
-- `expectations[]`: Graded expectations with evidence
-- `summary`: Aggregate pass/fail counts
-- `execution_metrics`: Tool usage and output size (from executor's metrics.json)
-- `timing`: Wall clock timing (from timing.json)
-- `claims`: Extracted and verified claims from the output
-- `user_notes_summary`: Issues flagged by the executor
-- `eval_feedback`: (optional) Improvement suggestions for the evals, only present when the grader identifies issues worth raising
+- `protocol`, `eval_id`, `eval_name`, `split`, `configuration`, and
+  `run_number` identify the paired run.
+- `expectations[]` contains `kind`, `text`, `passed`, `evidence`, and
+  optional `calibrated` for judge results.
+- `summary` contains `passed`, `failed`, `total`, and `pass_rate`.
+- `metrics` contains `duration_ms`, `total_tokens`, and `tool_calls`; missing
+  provider metrics remain `null`, not zero.
+- `adapter_error` is explicit when the process or protocol fails.
+- `artifacts` lists adapter-reported output paths already checked for
+  containment.
+
+The legacy `execution_metrics`, `timing`, claims, notes, and feedback fields
+remain acceptable historical evidence in recorded runs but are not required by
+the `skill-eval/v1` runner.
 
 ---
 
@@ -328,23 +375,29 @@ Output from Benchmark mode. Located at `benchmarks/<timestamp>/benchmark.json`.
 ```
 
 **Fields:**
-- `metadata`: Information about the benchmark run
-  - `skill_name`: Name of the skill
-  - `timestamp`: When the benchmark was run
-  - `evals_run`: List of eval names or IDs
-  - `runs_per_configuration`: Number of runs per config (e.g. 3)
-- `runs[]`: Individual run results
-  - `eval_id`: Numeric eval identifier
-  - `eval_name`: Human-readable eval name (use as the section header when you render the benchmark)
-  - `configuration`: Must be `"with_skill"` or `"without_skill"` (these exact strings are what group and label the two configurations)
-  - `run_number`: Integer run number (1, 2, 3...)
-  - `result`: Nested object with `pass_rate`, `passed`, `total`, `time_seconds`, `tokens`, `errors`
-- `run_summary`: Statistical aggregates per configuration
-  - `with_skill` / `without_skill`: Each contains `pass_rate`, `time_seconds`, `tokens` objects with `mean` and `stddev` fields
-  - `delta`: Difference strings like `"+0.50"`, `"+13.0"`, `"+1700"`
-- `notes`: Freeform observations from the analyzer
+- `metadata`: Skill path, timestamp, selected eval IDs, and repetitions.
+- `runs[]`: Individual grading records. `configuration` is exactly
+  `"with_skill"` or `"without_skill"`, and `result` contains `pass_rate`,
+  `passed`, `failed`, `total`, `time_seconds`, `tokens`, `tool_calls`, and
+  `errors`. The original `expectations` and evidence remain alongside it.
+- `run_summary`: Statistical aggregates per configuration. Each configuration
+  contains `pass_rate`, `objective_pass_rate`, `calibrated_judge_pass_rate`,
+  `time_seconds`, and `tokens`, each with mean, standard deviation, minimum,
+  and maximum where metrics exist.
+- `run_summary.delta` and `deltas`: With-skill-minus-baseline pass-rate,
+  time, and token differences.
+- `diagnostics`: Explicit adapter failures, non-discriminating or
+  uncalibrated judges, high variance, missing metrics, absent quality gain,
+  and cost growth without quality gain.
+- `notes`: Human-readable interpretation notes.
 
-**Important:** Anything that reads this file - your `benchmark.md` summary, or any view you render from it - depends on these exact field names. Using `config` instead of `configuration`, or putting `pass_rate` at the top level of a run instead of nested under `result`, will silently produce empty or zero values downstream. There is no bundled benchmark viewer; reference this schema when you generate or render benchmark.json by hand.
+Benchmark aggregation is deterministic and refuses incomplete configuration
+pairs, partial repetitions, and mixed protocol versions. Judge-derived scores
+remain separate from objective scores until calibrated.
+
+**Important:** Consumers should use the exact `configuration`, `result`, and
+`run_summary` field names. `configurations` and `deltas` are retained as
+machine-readable aliases for the evaluator's richer report.
 
 ---
 

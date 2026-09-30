@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "skill_name": "eval-suite-valid",
+  "evals": [
+    {
+      "id": 1,
+      "name": "train-report",
+      "split": "train",
+      "prompt": "Produce a trained report artifact.",
+      "expected_output": "The report contains the trained result.",
+      "files": [],
+      "failure_modes": ["FM-1"],
+      "expectations": [
+        {"kind": "text_contains", "target": "final", "value": "trained"},
+        {"kind": "file_exists", "path": "report.json"},
+        {"kind": "json_value", "path": "report.json", "key": "result", "equals": "train-pass"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "held-out-report",
+      "split": "held_out",
+      "prompt": "Produce a held-out report artifact.",
+      "expected_output": "The report contains the held-out result.",
+      "files": [],
+      "failure_modes": ["FM-1"],
+      "expectations": [
+        {"kind": "text_contains", "target": "final", "value": "held-out-ok"},
+        {"kind": "file_exists", "path": "report.json"},
+        {"kind": "json_value", "path": "report.json", "key": "result", "equals": "held-out-pass"}
+      ]
+    }
+  ]
+}

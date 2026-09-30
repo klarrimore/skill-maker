@@ -1,4 +1,16 @@
 # Changelog - skill-maker
+## [1.10.0] - 2026-09-30
+
+### Added
+
+- Added a versioned, provider-neutral `skill-eval/v1` suite with strict eval models, offline audits, paired runs, trigger repetitions, benchmark aggregation, redacted append-only evidence, and sandboxed held-out improvement.
+- Added deterministic fixture coverage for path containment, adapter failures, command-check denial, candidate promotion, and the dedicated skip-evals input.
+
+### Changed
+
+- Migrated `evals/evals.json` and trigger queries to typed version 1 contracts, calibrated the self-eval judge rubrics with held-out labels, and moved artifact grading into shipped `scripts.skill_eval`.
+- Updated the skill workflow, schemas, evaluation references, README, and smoke-facing self-eval documentation to describe the automated path and manual fallback.
+
 
 ## [1.9.0] - 2026-09-30
 
@@ -204,6 +216,7 @@
 
 - Removed an installed skill that was checked in by mistake.
 
+[1.10.0]: https://github.com/klarrimore/skill-maker/compare/v1.9...v1.10
 [1.9.0]: https://github.com/klarrimore/skill-maker/compare/v1.8...v1.9
 [1.8.0]: https://github.com/klarrimore/skill-maker/compare/v1.7...v1.8
 [1.7.0]: https://github.com/klarrimore/skill-maker/compare/v1.6...v1.7

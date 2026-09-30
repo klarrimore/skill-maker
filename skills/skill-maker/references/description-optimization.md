@@ -1,105 +1,53 @@
 # Optimizing the Description for Triggering
 
-The `description` field is the primary and essentially only mechanism an agent uses to decide
-whether to load a skill. An under-specified description means the skill will not trigger when
-it should; an over-broad one means it triggers when it should not. After the skill works, tune
-the description with a small eval-driven loop.
+The `description` field is the primary mechanism an agent uses to decide whether to load a
+skill. Tune it with realistic queries, balanced near misses, repeated trigger measurements,
+and held-out selection. The evaluator keeps this loop separate from ordinary task evals.
 
-## How triggering actually works
+## Build the query set
 
-A skill appears in the agent's available-skills list as its `name` plus `description`, and the
-agent decides whether to consult it from that text alone. Two consequences:
-
-- Agents only consult a skill for a task they cannot already handle trivially. A one-step
-  request like "read this PDF" may not trigger a PDF skill even with a perfect description,
-  because the agent can just do it. So eval queries must be substantive enough that consulting
-  a skill is worthwhile; "read file X" is a poor test case.
-- Agents tend to under-trigger. Counter it by making the description a little pushy: list the
-  contexts where the skill applies, including ones where the user does not name the domain
-  ("even if they do not explicitly mention CSV or analysis").
-
-## Principles for a good description
-
-- Imperative phrasing. "Use this skill when..." rather than "This skill does...".
-- Focus on user intent, not implementation.
-- Be pushy: enumerate applicable contexts, including indirect ones.
-- Stay concise. Aim for 256 characters or fewer and treat 512 as the working ceiling; 1024 is
-  a hard limit, not a target. Do not approach it by keyword-stuffing.
-
-Before and after:
-
-```yaml
-# Before
-description: Process CSV files.
-
-# After
-description: >
-  Analyze CSV and tabular data files: compute summary statistics, add derived
-  columns, generate charts, and clean messy data. Use this skill when the user
-  has a CSV, TSV, or Excel file and wants to explore, transform, or visualize the
-  data, even if they do not explicitly mention "CSV" or "analysis."
-```
-
-## Step 1: Generate trigger eval queries
-
-Create about 20 queries, split should-trigger and should-not-trigger:
+Store about 20 unique records in `evals/trigger_queries.json` using the versioned object shape:
 
 ```json
-[
-  {"query": "the user prompt", "should_trigger": true},
-  {"query": "another prompt", "should_trigger": false}
-]
+{
+  "version": 1,
+  "queries": [
+    {"query": "turn this workflow into a reusable skill", "should_trigger": true, "split": "train"},
+    {"query": "review this pull request", "should_trigger": false, "split": "held_out"}
+  ]
+}
 ```
 
-Make them realistic: concrete and specific, with file paths, job or situation context, column
-names and values, company names, URLs, a little backstory. Vary length and register; some
-lowercase, some with abbreviations, typos, or casual speech. Favor edge cases over clear-cut
-ones.
+Use both labels in both splits. Positive cases should include indirect wording where the user
+does not name the skill. Negative cases should be domain-adjacent near misses that share terms
+but need another tool. Avoid obviously irrelevant negatives. Hold out roughly 40 percent of the
+queries and do not expose their labels or results to a revision adapter.
 
-Weak: "Format this data", "Extract text from PDF", "Create a chart".
+## Review and run
 
-Strong: "ok so my boss just sent me this xlsx file (its in my downloads, called something
-like 'Q4 sales final FINAL v2.xlsx') and she wants me to add a column that shows the
-profit margin as a percentage. revenue is in column C and costs are in column D i think".
+Render the query set with `scripts/render_review.py` or present it inline when no display is
+available. Let the author correct queries before tuning the description. Then run at least three
+repetitions per query:
 
-For should-trigger (8 to 10): cover different phrasings of the same intent, some formal and
-some casual, including cases where the user names neither the skill nor the file type but
-clearly needs it. Throw in uncommon use cases and cases where this skill competes with another
-but should win.
+```bash
+python -m scripts.skill_eval run ./skill-maker \
+  --workspace /tmp/trigger-run --trigger --runs 3 \
+  --adapter-arg python3 --adapter-arg /path/to/adapter.py
+```
 
-For should-not-trigger (8 to 10): the valuable ones are near-misses, queries that share
-keywords or concepts with the skill but need something different. Adjacent domains, ambiguous
-phrasing where a naive keyword match would trigger, contexts where another tool fits better. Do
-not make negatives obviously irrelevant; "write a fibonacci function" as a negative for a PDF
-skill tests nothing.
+The adapter receives `operation: trigger`, the query, the current description, and a workspace
+output directory. It returns `triggered: true` or `false`. A query passes when its trigger rate
+is at least 0.5. The evaluator records every repetition and writes `trigger_results.json` with
+per-query rates and train/held-out scores.
 
-## Step 2: Review the eval set with the user
+Use train failures to propose a more specific, slightly pushy description. Re-run both splits,
+then select by the held-out score, not the training score. A description should say what the
+skill does and when to use it, stay under 1024 characters, avoid keyword stuffing, and pass the
+bundled validator's angle-bracket hardening check.
 
-Bad eval queries produce bad descriptions, so get sign-off. If you have a display, render
-`assets/eval_review.html`: replace `__EVAL_DATA_PLACEHOLDER__` with the JSON array (no
-surrounding quotes; it is a JS assignment), `__SKILL_NAME_PLACEHOLDER__` with the name, and
-`__SKILL_DESCRIPTION_PLACEHOLDER__` with the current description. Write to a temp file and open
-it. The user can edit queries, toggle should-trigger, add or remove entries, then export the
-set. With no display, present the queries inline and let the user edit them in the
-conversation.
+## Human review and fallback
 
-## Step 3: Run the optimization loop
-
-Split the eval set into roughly 60 percent train and 40 percent held-out test. Run each query
-at least 3 times to get a reliable trigger rate, with a pass threshold of 0.5. Propose an
-improved description from the train failures only, re-evaluate on both splits, and iterate up
-to about 5 times. Select the best iteration by the held-out score, not the train score, to
-avoid overfitting.
-
-Run the loop by hand with the model that powers the current session, so the test matches what
-the user experiences. Record whether the skill would trigger for each query. Store the split,
-per-query trigger rates, and scores as `trigger_results.json` (schema in `schemas.md`) so the
-selection is auditable.
-
-## Step 4: Apply the result
-
-Take the winning description, update the `SKILL.md` frontmatter, and re-check the length
-budget. Angle brackets are not a format constraint: the spec is silent and the official
-`skills-ref` validator does not check them. The bundled validator rejects them as a hardening
-measure, since some clients may sanitize markup. Then sanity-check the winner with 5 to 10
-fresh queries, and show the user the before and after with the scores.
+Show the before and after descriptions, the query-level rates, and the held-out score to the
+human before applying a winner. Run 5 to 10 fresh sanity queries after the edit. If no adapter
+exists, perform the same repetitions manually and save the prompts, outputs, rates, and scores;
+do not claim a quantitative comparison from a single session.

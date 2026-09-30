@@ -1,139 +1,149 @@
 # Evaluating and Improving a Skill
 
-Full workflow: run test cases, get outputs in front of the user, grade, benchmark, improve the
-skill. One continuous sequence; do not stop partway, and do not delegate to a separate testing
-skill.
+The bundled evaluator keeps deterministic checks offline and delegates model execution to an
+explicit provider-neutral command. It supports paired task runs, trigger runs, benchmarks, and
+sandboxed candidate improvement. Human review remains part of the loop: inspect outputs before
+rewriting instructions.
 
-Richest with subagents and a display. If absent, read `environment-adaptations.md` first and
-substitute the manual path; the structure below still applies.
+## Commands and exit codes
 
-## Workspace layout
+Run from the skill root, where `scripts.*` imports resolve:
 
-Put results in `<skill-name>-workspace/`, a sibling of the skill directory. Organize by
-iteration (`iteration-1/`, `iteration-2/`, ...). Give each test case its own directory, named
-for what it tests (not just `eval-0/`). Create directories as you go, not all upfront.
-
-## Step 1: Spawn all runs in the same turn
-
-For each test case, run two configurations in the same turn: one with the skill, one baseline.
-Launch everything at once so runs finish together; do not run all with-skill cases first and
-circle back for baselines.
-
-With-skill run brief:
-
-```
-Execute this task:
-- Skill path: <path-to-skill>
-- Task: <eval prompt>
-- Input files: <eval files, or "none">
-- Save outputs to: <workspace>/iteration-<N>/<eval-name>/with_skill/outputs/
-- Outputs to save: <what the user cares about, e.g. "the .docx", "the final CSV">
+```bash
+python -m scripts.skill_eval audit ./target-skill --workspace /tmp/skill-audit
+python -m scripts.skill_eval run ./target-skill --workspace /tmp/skill-run \
+  --runs 3 --adapter-arg python3 --adapter-arg /path/to/agent-adapter.py
+python -m scripts.skill_eval run ./target-skill --workspace /tmp/trigger-run \
+  --trigger --runs 3 --adapter-arg python3 --adapter-arg /path/to/agent-adapter.py
+python -m scripts.skill_eval benchmark ./target-skill --workspace /tmp/skill-run
+python -m scripts.skill_eval improve ./target-skill --workspace /tmp/skill-improve \
+  --max-iterations 3 --adapter-arg python3 --adapter-arg /path/to/agent-adapter.py
 ```
 
-Baseline run, same prompt, baseline depends on context:
-- Creating a new skill: no skill at all. Save to `without_skill/outputs/`.
-- Improving an existing skill: the old version. Snapshot first
-  (`cp -r <skill-path> <workspace>/skill-snapshot/`), point the baseline at the snapshot, save
-  to `old_skill/outputs/`.
+The CLI emits one JSON result on stdout. Diagnostics belong on stderr. Exit codes are:
 
-Write an `eval_metadata.json` per test case (assertions can start empty). Schema in `schemas.md`:
+- `0`: the requested operation completed without an error gate;
+- `1`: the operation completed but an audit, expectation, trigger, or benchmark error failed;
+- `2`: usage, schema, path, adapter configuration, timeout, or other safety configuration error.
+
+`run` returns `1` when a baseline fails an expectation. That is evidence, not a missing row. A
+run record is written for every case/configuration/repetition, including adapter failures.
+
+## Evaluation contract
+
+Read `references/schemas.md` for the version 1 JSON contract. Before any adapter starts, the
+loader validates typed expectations, input and rubric paths, train/held-out coverage, failure
+mode mappings, trigger labels, and duplicate identifiers. Keep objective artifact checks in
+code. Use a binary judge only for transcript-dependent quality, and calibrate it with held-out
+human labels in `evals/judge_labels.json` before using it as a promotion gate.
+
+A `command` expectation is high impact and is denied by default. Review the literal argv and opt
+in explicitly:
+
+```bash
+python -m scripts.skill_eval run ./target-skill --workspace /tmp/run \
+  --allow-command-checks --adapter-arg python3 --adapter-arg /path/to/adapter.py
+```
+
+Commands use `shell=False`, a bounded timeout, a minimal environment, and the run output folder
+as their working directory. Shell strings, wildcard discovery, inherited credentials, and paths
+outside the workspace are not accepted. Every allow or deny decision is recorded in metadata-only
+`audit.jsonl`; prompts, transcripts, rubric contents, credentials, and environment variables are
+not copied into that log.
+
+## Adapter protocol
+
+The adapter receives exactly one JSON object on stdin and must emit exactly one JSON object on
+stdout. Stderr is bounded diagnostics. The protocol is `skill-eval/v1`:
 
 ```json
 {
-  "eval_id": 0,
-  "eval_name": "descriptive-name-here",
-  "prompt": "The user's task prompt",
-  "assertions": []
+  "protocol": "skill-eval/v1",
+  "operation": "task",
+  "run_id": "1-with_skill-1",
+  "skill_path": "/workspace/skill",
+  "configuration": "with_skill",
+  "prompt": "the eval prompt",
+  "input_files": ["/workspace/run/inputs/source.txt"],
+  "output_dir": "/workspace/run/outputs"
 }
 ```
 
-If an iteration uses new or changed prompts, recreate these files; do not assume they carry
-over.
+The operation is `task`, `trigger`, `judge`, or `revise`. A successful response has `status`
+`ok`, optional `final` and `transcript`, a contained `files` list, and optional `metrics` with
+`duration_ms`, `total_tokens`, and `tool_calls`. An error response has `status` `error` and a
+non-empty `error`. Malformed JSON, multiple JSON values, nonzero exit, timeouts, and escaping
+artifact paths are explicit failures, never fabricated successes.
 
-## Step 2: While runs are in progress, draft assertions
+For a trigger request, return a boolean `triggered`. The evaluator runs every query at least
+three times and passes it when the trigger rate is at least 0.5. Revise requests contain only
+train failure evidence and a workspace-owned candidate destination. Held-out prompts, labels,
+results, and scores are not sent to `revise`.
 
-Do not idle while runs execute. Draft objectively verifiable assertions - the `expectations`
-entries in `evals.json` and `grading.json` - with descriptive, self-explanatory names; explain
-each to the user. Subjective skills (writing voice, design quality) are better judged
-qualitatively; do not force assertions onto things needing human judgment. Update the
-`eval_metadata.json` files and `evals/evals.json` once drafted. Tell the user what they will
-see: the qualitative outputs and the quantitative benchmark.
+## Workspace and evidence
 
-## Step 3: Capture timing as runs complete
+The evaluator creates this shape:
 
-If your runtime reports `total_tokens` and `duration_ms` when a run finishes, save them
-immediately to `timing.json` in that run directory; this data is not persisted anywhere else.
-Process each notification as it arrives rather than batching.
-
-```json
-{ "total_tokens": 84852, "duration_ms": 23332, "total_duration_seconds": 23.3 }
+```text
+workspace/
+├── audit.json
+├── audit.jsonl
+├── runs/<eval-id>-<configuration>-<run-number>/
+│   ├── inputs/                 # copied, immutable source inputs
+│   ├── outputs/                # adapter artifacts
+│   ├── request.json
+│   ├── response.json
+│   └── grading.json
+├── benchmark.json
+├── benchmark.md
+└── history.json                # improve mode
 ```
 
-## Step 4: Grade, aggregate, review
+The store writes JSON atomically and appends audit metadata. Source skills and source fixtures
+are never used as adapter output directories. Copy a read-only input into a workspace before
+editing it.
 
-1. Grade each run by hand. Evaluate each assertion against the outputs; save `grading.json` in
-   each run directory. Grade strictly against the assertion text, cite the specific evidence in
-   the output that makes each pass or fail, and do not give credit for near-misses or
-   intentions. The `grading.json` expectations array must use fields `text`, `passed`, and
-   `evidence` exactly. For assertions checkable programmatically, write and run a script
-   instead of eyeballing.
-2. Aggregate into a benchmark. Build `benchmark.json` (and a readable `benchmark.md` summary)
-   by hand, following `schemas.md` exactly. Report pass rate, time, and tokens per configuration
-   (mean and stddev), plus the with-skill-minus-baseline delta. Place each with_skill entry
-   before its baseline counterpart.
-3. Do an analyst pass. Read the benchmark and surface what the aggregates hide:
-   non-discriminating assertions (pass regardless of skill, so they tell you nothing),
-   high-variance evals (possibly flaky, rerun before trusting), and time/token tradeoffs (a
-   small quality gain that doubles cost may not be worth it).
-4. Present the outputs to the user for review before you critique them yourself. Show each case
-   in the conversation: the prompt, the with-skill output, and the baseline output side by side,
-   plus the per-case pass rates from the benchmark. If an output is a file the user must open (a
-   `.docx`, an `.xlsx`, a chart), save it to the workspace and tell them the path. Ask for
-   feedback inline ("How does each look? Anything you would change?").
-5. Get the examples in front of the human first; do not start rewriting from your own read of
-   the outputs before the user has weighed in.
+## Paired task evaluation
 
-## Step 5: Read the feedback
+1. Run `audit` first and fix error findings. Warnings are visible tradeoffs, not silent passes.
+2. Select ordinary task evals. Keep eval 3, the description trigger case, separate from routine
+   task regressions when its cost is not justified.
+3. Run the same prompt and input files with `with_skill` and `without_skill`, interleaved by
+   case and repetition number. The baseline can be no skill or a snapshot of the old skill.
+4. Grade deterministic expectations from output artifacts and final/transcript text. Send only
+   judge expectations to a judge operation.
+5. Present the paired outputs to the human before critiquing or changing the skill.
 
-Gather feedback inline as the user responds, one case at a time. Empty or "looks fine"
-responses mean that case is good; focus on cases with specific complaints, and restate each
-complaint as the underlying problem before you act.
+`benchmark` consumes completed `grading.json` records only. It refuses missing configuration
+pairs, mixed protocol versions, and partial repetitions. It reports pass-rate, duration, and
+token mean, standard deviation, minimum, maximum, and with-skill-minus-baseline deltas. It also
+flags non-discriminating checks, high variance, missing metrics, adapter failures, uncalibrated
+judges, absent quality gain, and cost growth without quality gain.
 
-## Improving the skill
+## Sandboxed improvement
 
-Heart of the loop. Four ways to think about a change:
+`improve` requires a clean audit, at least one train case, at least one held-out case, and an
+adapter. It copies the source into `workspace/candidates/v0/<skill-name>/`. For each iteration it:
 
-1. Generalize from the feedback. You and the user iterate on a few examples because it is fast,
-   but the skill has to work on a million prompts you will never see. Resist fiddly overfit
-   changes and oppressive MUSTs. If an issue is stubborn, try a different metaphor or working
-   pattern; it is cheap.
-2. Keep the prompt lean. Read the transcripts, not just the outputs. If the skill makes the
-   agent waste time on something unproductive, cut the part causing it and see what happens.
-3. Explain the why. Get into the user's head, understand the task behind even a terse or
-   frustrated comment, and transmit that understanding into the instructions. Reasoning beats
-   rigid structure.
-4. Look for repeated work across cases. If every run independently wrote a similar helper (a
-   `create_docx.py`, a `build_chart.py`), that is a strong signal to write it once, put it in
-   `scripts/`, and have the skill call it.
+1. runs the current candidate on train and held-out cases;
+2. sends only failed train expectations and cited artifact metadata to `revise`;
+3. stages a fresh `candidates/vN/<skill-name>/` copy under the workspace;
+4. validates and audits the candidate before running it;
+5. evaluates valid candidates against the same baseline and held-out cases;
+6. promotes only a strict winner by this ordered score: held-out objective pass rate, calibrated
+   judge pass rate, lower mean tokens, then lower mean duration. Ties retain the incumbent;
+7. records parentage, scores, validation, audit, and `grading_result` (`baseline`, `won`, `lost`,
+   `tie`, or `invalid`) in `history.json`.
 
-Take your time; thinking is not the blocker. Draft a revision, look at it anew, improve it.
+The final artifact is copied to `workspace/best-skill/<skill-name>/` so its frontmatter name and
+parent directory remain valid. It is revalidated before returning. Promotion does not install,
+rename, or overwrite the original source skill.
 
-### The iteration loop
+## Manual fallback
 
-1. Apply the improvements.
-2. Rerun all test cases into `iteration-<N+1>/`, including baselines. For a new skill the
-   baseline stays `without_skill`. For an existing skill, use judgment: the original the user
-   arrived with, or the previous iteration.
-3. Present the new outputs against the prior iteration's so the user can see what changed.
-4. Wait for review, read the new feedback, improve again.
-
-Stop when the user is happy, feedback is all empty, or you are no longer making meaningful
-progress.
-
-## Advanced: blind comparison (optional, needs subagents)
-
-For a rigorous "is the new version actually better?" check, give two outputs to a separate
-agent instance without telling it which is which. Let it judge against the assertions, then
-analyze why the winner won. Randomize which output is presented first, so position does not
-bias the judgment; have the judge cite specific evidence. Most skills do not need this; the
-human review loop is usually enough.
+If no non-interactive agent command exists, use the same contract by hand: copy inputs, read the
+skill, run each prompt one at a time, save outputs and transcripts, grade deterministic checks,
+and show the results for review. Do not invent baseline or benchmark numbers without an
+independent baseline. If no display exists, write `benchmark.md` and the review HTML to the
+workspace and provide the paths for human inspection. A model adapter is optional; audit,
+validation, packaging, and artifact grading remain offline.

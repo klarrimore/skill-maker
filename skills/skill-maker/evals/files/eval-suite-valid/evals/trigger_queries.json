@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "queries": [
+    {"query": "run the evaluation report", "should_trigger": true, "split": "train"},
+    {"query": "evaluate this skill", "should_trigger": true, "split": "held_out"},
+    {"query": "review a pull request", "should_trigger": false, "split": "train"},
+    {"query": "write a poem", "should_trigger": false, "split": "held_out"}
+  ]
+}

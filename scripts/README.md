@@ -4,9 +4,9 @@ Repo-level helpers for developing and verifying skill-maker. None of this ships:
 outside `skills/skill-maker/` and is excluded from the packaged `.skill`. Run commands from the
 repo root unless noted.
 
-skill-maker is not a server or GUI app — its runnable surfaces are two Python CLI scripts
-(`quick_validate`, `package_skill`), a stdlib `unittest` suite, and one static HTML asset
-(`assets/eval_review.html`, an eval-review UI with placeholder tokens).
+skill-maker is not a server or GUI app. Its runnable surfaces are the validator, the
+provider-neutral `skill_eval` CLI, packaging/install adapters, a stdlib `unittest` suite, and
+one static HTML asset (`assets/eval_review.html`, an eval-review UI with placeholder tokens).
 
 ## Smoke driver
 
@@ -17,11 +17,10 @@ bash scripts/smoke.sh
 ```
 
 Checks: validator passes on the skill, rejects the broken fixture (and confirms the fixture
-still carries its violations), accepts the valid `standup-summary` fixture, unit tests pass,
-the internal functions import and run directly, the eval grader passes on the skill and fails
-on the fixture, packaging produces a `.skill` zip free of dev artifacts, the eval-review UI
-renders from real data, and (if `google-chrome` exists) a screenshot lands at
-`/tmp/eval_review_screenshot.png` — open that file to see the UI.
+still carries its violations), accepts the valid fixtures, unit tests pass, the evaluator audit,
+paired run, benchmark, sandboxed improvement, package/install boundaries, direct imports, and
+the eval-review UI all work. If `google-chrome` exists, a screenshot lands at
+`/tmp/eval_review_screenshot.png` - open that file to see the UI.
 
 To render/screenshot the review UI alone:
 
@@ -36,9 +35,12 @@ google-chrome --headless --disable-gpu --window-size=1200,1600 \
 All must run **from `skills/skill-maker/`, as modules** (see Gotchas):
 
 ```bash
-cd skills/skill-maker
 python3 -m scripts.quick_validate .                    # validate (exit 0 = valid)
 python3 -m scripts.quick_validate evals/files/broken-skill  # expect exit 1
+python3 -m scripts.skill_eval audit . --workspace /tmp/skill-audit
+python3 -m scripts.skill_eval run . --workspace /tmp/skill-run \
+  --adapter-arg python3 --adapter-arg /path/to/skill-eval-adapter.py
+python3 -m scripts.skill_eval benchmark . --workspace /tmp/skill-run
 python3 -m unittest discover -s tests -t .             # unit tests (stdlib, no deps)
 python3 -m scripts.package_skill . ../../dist          # validate + zip -> dist/skill-maker.skill
 python3 -m scripts.install_skill . --target /tmp/skills --dry-run  # report an install

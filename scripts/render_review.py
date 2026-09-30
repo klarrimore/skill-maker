@@ -22,7 +22,8 @@ def main():
     from scripts.utils import parse_frontmatter
 
     frontmatter, _body = parse_frontmatter((skill_dir / "SKILL.md").read_text())
-    eval_data = (skill_dir / "evals" / "trigger_queries.json").read_text().strip()
+    trigger_data = json.loads((skill_dir / "evals" / "trigger_queries.json").read_text())
+    eval_data = json.dumps(trigger_data.get("queries", trigger_data), indent=2)
 
     html = (skill_dir / "assets" / "eval_review.html").read_text()
     html = html.replace("__SKILL_NAME_PLACEHOLDER__", frontmatter["name"])

@@ -127,23 +127,20 @@ are in progress.
 
 ### Step 5: Evaluate and improve
 
-Run the test prompts, get the outputs in front of the user fast, gather feedback, then
-rewrite. The full evaluation workflow (running with-skill and baseline runs, drafting
-assertions, grading by hand, aggregating a benchmark, presenting the outputs for review,
-reading feedback, and the improvement heuristics) lives in **`references/evaluation.md`**. The
-short version of how to improve: generalize from feedback rather than overfitting to the
-test prompts, keep the prompt lean by cutting instructions the transcripts show the agent
-ignoring, explain the why, and bundle a script in `scripts/` when every run reinvents the
-same helper. Read the transcripts, not just the final outputs.
+Run `python -m scripts.skill_eval audit <skill> --workspace <workspace>` before any
+model-backed run. Fix error findings, then run paired with-skill and baseline cases with the
+explicit adapter described in `references/evaluation.md`. Inspect and show the outputs to the
+user before rewriting. Use `benchmark` for reproducible aggregates and `improve` only when a
+sandboxed, held-out candidate loop is appropriate. If no adapter exists, follow the manual
+fallback and do not invent model metrics. Read transcripts and artifacts, not just final text.
 
 ### Step 6: Optimize the description
 
-The description determines triggering, so after the skill works, tune it. The full
-eval-driven method (build ~20 trigger queries split should-trigger / should-not-trigger
-with an emphasis on near-misses, run each several times for a trigger rate, use a
-train/validation split to avoid overfitting, iterate) lives in
-**`references/description-optimization.md`**. Run it by hand; the method is the portable
-default and needs no special tooling.
+The description determines triggering, so after the skill works, tune it with the versioned
+train/held-out query set in `evals/trigger_queries.json`. Run at least three repetitions per
+query with `python -m scripts.skill_eval run <skill> --trigger --runs 3`; select by held-out
+score and review the before/after output. Read **`references/description-optimization.md`** for
+the adapter and manual fallback.
 
 ### Step 7: Validate against the spec
 
@@ -261,11 +258,15 @@ References:
 
 Scripts (run as modules from the skill root, e.g. `python -m scripts.quick_validate`):
 - `scripts/quick_validate.py` - zero-network spec validator (fallback for `skills-ref validate`).
+- `scripts/eval_models.py` - strict versioned eval, trigger, and calibration contract loader.
+- `scripts/eval_adapter.py` - provider-neutral `skill-eval/v1` command adapter.
+- `scripts/eval_store.py` - atomic workspace artifacts and redacted append-only audit metadata.
+- `scripts/skill_eval.py` - audit, run, benchmark, and sandboxed improve CLI.
 - `scripts/package_skill.py` - validate then zip into a `.skill` for hosts that accept uploads.
-- `scripts/install_skill.py` - build a clean copy of a skill and install it into a skills directory (default `~/.agents/skills/`).
+- `scripts/install_skill.py` - build a clean copy of a skill and install it into a skills directory.
 
 Assets:
 - `assets/eval_review.html` - template for the trigger-query review used in description optimization (Step 6); fill the placeholders by hand. There is no separate benchmark viewer; present benchmark results inline or as a `benchmark.md` summary.
 
 Evals (self-tests; not shipped - excluded from the packaged `.skill`):
-- `evals/` - an example `evals.json`, trigger queries, and a broken-skill fixture that exercise this skill on its own format. See `evals/README.md`.
+- `evals/` - versioned task and trigger cases, calibration labels, fixtures, and historical evidence.

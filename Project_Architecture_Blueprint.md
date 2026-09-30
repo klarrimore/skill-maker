@@ -18,11 +18,12 @@ The implementation is a small modular monolith:
 
 1. `scripts/utils.py` provides the shared artifact-parsing and file-walking kernel.
 2. `scripts/quick_validate.py` enforces frontmatter, naming, file-layout, and hardening rules.
-3. `scripts/package_skill.py` and `scripts/install_skill.py` adapt the validated skill into a zip archive or a clean filesystem installation.
-4. `evals/grade_artifacts.py` reuses the validator and parser to check objectively verifiable output properties.
-5. `tests/` exercises the modules with temporary filesystem fixtures.
-6. Root `scripts/smoke.sh` composes the individual surfaces into an end-to-end verification path.
-7. `scripts/render_review.py` fills the static `assets/eval_review.html` template with real skill metadata and trigger-query data.
+3. `scripts/eval_models.py`, `eval_adapter.py`, and `eval_store.py` define the strict evaluation contract, provider-neutral protocol, and evidence boundary.
+4. `scripts/skill_eval.py` audits skills, runs paired task/trigger cases, aggregates benchmarks, and improves sandboxed candidates.
+5. `scripts/package_skill.py` and `scripts/install_skill.py` adapt the validated skill into a zip archive or a clean filesystem installation.
+6. `tests/` exercises the modules with temporary filesystem fixtures.
+7. Root `scripts/smoke.sh` composes the individual surfaces into an end-to-end verification path.
+8. `scripts/render_review.py` fills the static `assets/eval_review.html` template with real skill metadata and trigger-query data.
 
 The dominant dependency direction is inward toward the shared parser and traversal rules. Packaging, installation, grading, and rendering are outer adapters. There is no database, remote API, service boundary, authentication subsystem, event bus, cache, container deployment, or runtime service discovery mechanism in the observed repository.
 
@@ -53,10 +54,9 @@ The analysis is grounded in these repository files:
 
 - `README.md`, `AGENTS.md`, and `CHANGELOG.md`
 - `skills/skill-maker/SKILL.md`
-- `skills/skill-maker/scripts/{utils,quick_validate,package_skill,install_skill}.py`
-- `skills/skill-maker/evals/grade_artifacts.py` and `evals/README.md`
+- `skills/skill-maker/scripts/{utils,quick_validate,package_skill,install_skill,eval_models,eval_adapter,eval_store,skill_eval}.py`
+- `skills/skill-maker/evals/{grade_artifacts.py,evals.json,trigger_queries.json,judge_labels.json,files/,judges/,runs/}`
 - `skills/skill-maker/tests/`
-- `skills/skill-maker/evals/{evals.json,trigger_queries.json,files/,judges/,runs/}`
 - `skills/skill-maker/references/`
 - `skills/skill-maker/assets/eval_review.html`
 - `scripts/{smoke.sh,render_review.py,README.md}`
@@ -264,12 +264,11 @@ The following directories are development-only and are removed from packaged or 
 
 `evals/` is a source-controlled test and evidence subsystem, not part of the shipped skill. It contains:
 
-- Prompt definitions in `evals.json`
-- Trigger cases in `trigger_queries.json`
+- Versioned task and trigger contracts plus calibration labels
 - Valid and intentionally broken fixtures
-- `grade_artifacts.py` for deterministic checks
+- A compatibility grader wrapper and historical run reports
 - Seed judge prompts for subjective failure modes
-- Run summaries and per-eval grading reports
+- Evidence records consumed by the shipped `scripts/skill_eval.py`
 
 ## 6. Core architectural components
 
@@ -366,15 +365,19 @@ The following directories are development-only and are removed from packaged or 
 
 **Error model:** `InstallError` carries a user-facing message and a distinct exit code. Exit code `2` means an existing destination without `--force`; exit code `3` represents I/O failure.
 
-### 6.6 `evals/grade_artifacts.py`: deterministic quality adapter
+### 6.6 `scripts/skill_eval.py`: evaluation orchestration adapter
 
-**Purpose:** Emits `grading.json`-shaped checks for objectively verifiable skill properties.
+**Purpose:** Audits a skill and its eval contract, executes a provider-neutral adapter,
+grades deterministic expectations, aggregates paired benchmarks, and promotes only a
+strictly better held-out candidate.
 
-**Dependencies:** Reuses `ALLOWED_PROPERTIES`, `body_warnings`, `name_violation`, and `validate_skill` from the validator, plus `parse_frontmatter` from the shared kernel.
+**Dependencies:** Reuses the validator, parser, strict eval models, command adapter, and
+workspace evidence store. It never becomes a runtime dependency of validation, packaging,
+or installation.
 
-**Boundary:** It does not attempt to grade transcript-dependent behavior such as whether an agent explained a safety refusal. Those expectations are documented for human grading.
-
-**Extension:** Add a check only when the property is deterministic and consumer-visible. Keep subjective quality in a judge prompt or human rubric rather than converting it into a tautological source-text test.
+**Boundary:** It keeps prompts and transcripts in run artifacts, not audit metadata, and
+denies command expectations unless explicitly enabled. `evals/grade_artifacts.py` is only
+a compatibility wrapper for the shared deterministic artifact grader.
 
 ### 6.7 Tests and fixtures
 
@@ -420,8 +423,9 @@ This is a presentation adapter with no server and no persistent state. The HTML 
 | Contract and content | `SKILL.md`, `references/`, JSON eval data | Defines inputs and policy language |
 | Shared kernel | `scripts/utils.py` | Depends on Python standard library and PyYAML |
 | Validation policy | `scripts/quick_validate.py` | May depend on the shared kernel |
+| Evaluation core | `scripts/eval_models.py`, `scripts/eval_store.py`, `scripts/skill_eval.py` | May depend on validation and shared kernel |
+| Evaluation process edge | `scripts/eval_adapter.py` | Invokes only an explicit configured command |
 | Distribution adapters | `scripts/package_skill.py`, `scripts/install_skill.py` | May depend on validation and shared kernel |
-| Evaluation adapter | `evals/grade_artifacts.py` | May depend on validation and shared kernel |
 | Test and orchestration | `tests/`, `scripts/smoke.sh`, `scripts/render_review.py` | May invoke lower layers; lower layers must not depend on tests or smoke tooling |
 | Presentation asset | `assets/eval_review.html` | Consumed by the renderer; no Python dependency |
 
@@ -431,7 +435,8 @@ This is a presentation adapter with no server and no persistent state. The HTML 
 - `quick_validate.py` is the single validation policy module. Consumers should not duplicate its hard checks.
 - Packager and installer must validate before writing output.
 - Packaging and installation must share traversal and exclusion behavior.
-- Evals may observe and grade implementation behavior but must not be required at runtime by the shipped validator, packager, or installer.
+- Evaluation may observe and grade implementation behavior but must not be required at runtime by the shipped validator, packager, or installer.
+- Adapter writes and command checks are workspace-contained, explicit, shell-free, and auditable.
 - Tests may import internal functions, but production modules must not import tests or run the test suite implicitly.
 - Root orchestration may invoke modules as processes, but the modules must remain directly callable.
 
@@ -473,12 +478,13 @@ Markdown body
 
 The evaluation subsystem uses explicit JSON records:
 
-- `evals.json`: skill name, eval id, prompt, expected output, input files, and expectations
-- `trigger_queries.json`: flat query records with `query` and `should_trigger`
-- `grading.json`: expectation checks with `text`, `passed`, and `evidence`, plus summary data
-- Run summaries and judge prompts: Markdown evidence and human/model grading instructions
-
-This is file-based evidence storage, not a database. The repository does not implement migrations, transactions, or concurrent writers for evaluation data.
+- `evals.json`: versioned skill name, eval id/name, split, prompt, expected output, input files, failure modes, and typed expectations
+- `trigger_queries.json`: versioned query records with `query`, `should_trigger`, and `split`
+- `judge_labels.json`: human calibration examples with held-out labels
+- `grading.json`: expectation checks with kind, text, pass state, evidence, and metrics
+- `benchmark.json`/`benchmark.md`: paired runs, descriptive statistics, deltas, and diagnostics
+- `history.json`: candidate parentage, validation, audit, scores, and promotion results
+- `audit.jsonl`: append-only metadata without prompt, transcript, rubric, credential, or environment content
 
 ### 8.3 Artifact transformation model
 
@@ -724,10 +730,11 @@ When changing a public callable:
 | Parser and predicate unit tests | `tests/test_utils.py`, `test_quick_validate.py` | Syntax, naming, exclusion, budget, and validation branches |
 | Packaging tests | `tests/test_package_skill.py` | Archive creation, path rooting, exclusions, invalid input |
 | Installer tests | `tests/test_install_skill.py` | Install, replace, dry-run, refusal, default target, overlap safety |
-| Grader tests | `tests/test_grade_artifacts.py` | Check production of deterministic grading results |
-| Eval data tests | `tests/test_evals_data.py` | JSON shape, fixture references, judge prompt shape, fixture behavior |
+| Evaluator unit tests | `tests/test_eval_models.py`, `test_eval_adapter.py`, `test_skill_eval.py` | Schema, containment, protocol, evidence, grading, benchmark, and candidate transitions |
+| Legacy grader tests | `tests/test_grade_artifacts.py` | Compatibility wrapper over deterministic artifact grading |
+| Eval data tests | `tests/test_evals_data.py` | Versioned JSON shape, fixture references, judge prompt shape, fixture behavior |
 | Integration smoke | `scripts/smoke.sh` | Full CLI and artifact pipeline, expected positive/negative outcomes |
-| Manual/human grading | `evals/README.md`, run reports | Transcript-dependent safety and quality judgments |
+| Human review | `evals/README.md`, run reports | Transcript-dependent safety and quality judgments |
 
 ### 13.2 Test-double and fixture strategy
 
