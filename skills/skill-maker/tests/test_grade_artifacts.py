@@ -104,6 +104,14 @@ class TestGrade(unittest.TestCase):
         self.assertFalse(check["passed"])
         self.assertIn("author", check["evidence"])
 
+    def test_flags_em_dash_in_skill(self):
+        skill_dir = self._write_skill(
+            "my-skill",
+            "---\nname: my-skill\ndescription: Does a thing.\n---\nBody with an em dash — here.\n",
+        )
+        results = grade(skill_dir)
+        self.assertFalse(_by_text(results, "no em dash")["passed"])
+
     def test_flags_body_over_line_budget(self):
         body = "\n".join(f"line {i}" for i in range(600))
         skill_dir = self._write_skill(

@@ -6,7 +6,7 @@ compatibility: Portable across any skills-compatible agent that reads the agents
 metadata:
   author: klarrimore
   standard: agentskills.io
-  version: "1.7"
+  version: "1.10"
 ---
 
 # Skill Maker
@@ -89,7 +89,9 @@ The two fields that matter most:
 
 - **name**: the skill identifier. Lowercase letters, digits, and hyphens only, 1 to 64
   characters, no leading/trailing/double hyphens, and it must match the parent directory
-  name exactly. `pdf-processing`, not `PDF_Processing`.
+  name exactly, a portability rule from the standard's own reference validator, not
+  something every client checks (see `references/spec-reference.md`). `pdf-processing`,
+  not `PDF_Processing`.
 - **description**: the primary and essentially only triggering mechanism. It carries the
   entire burden of getting the skill loaded, so state both what the skill does and when
   to use it, including contexts where the user does not name the domain directly. Agents
@@ -104,7 +106,10 @@ behind each step rather than stacking rigid ALWAYS/NEVER rules. Keep `SKILL.md` 
 500 lines and roughly 5000 tokens; move anything longer into `references/` and point to
 it with a clear "read this when..." instruction. This is progressive disclosure, and it
 is the core discipline of the standard: only `name` and `description` load at startup,
-the body loads on activation, and bundled resources load on demand.
+the body loads on activation, and bundled resources load on demand. Write plain
+sentences: use commas, periods, colons, or parentheses for the connections an em dash
+(U+2014) would otherwise carry, and do not put that character anywhere in a skill's
+frontmatter or body.
 
 ### Safety and the principle of least surprise
 
@@ -151,23 +156,35 @@ skills-ref validate ./skill-maker
 
 If `skills-ref` is not installed, use the bundled zero-network validator. It checks the
 spec constraints (frontmatter fields, the 64/1024/500 character limits, kebab naming,
-name-matches-directory) plus hardening checks the spec does not require (rejecting
-angle brackets) and soft warnings on body length, so it is stricter than the spec:
+name-matches-directory) plus hardening checks the spec does not require (rejecting angle
+brackets and the em dash character, U+2014) and prints soft warnings on body length and
+name portability, so it is stricter than the spec on the hard checks alone:
 
 ```bash
 python -m scripts.quick_validate ./skill-maker
 ```
 
-Fix anything it flags before distributing.
+A non-zero exit is a spec violation or a hardening rejection: fix it before distributing.
+A warning printed after a valid result (body over the line, token, or Codex byte budget; a
+non-ASCII name; a description near the 1024-character ceiling) is a portability tradeoff,
+not a defect: a skill can legitimately keep a Unicode name or a longer body. Weigh the
+tradeoff and tell the user which you chose and why, rather than reflexively fixing or
+ignoring it.
 
 ### Step 8: Distribute
 
 A skill is just a folder, and the folder is the unit of distribution. Place it where the
 target agent looks. For cross-client portability, many clients read `.agents/skills/<name>/`
 (project scope), `~/.agents/skills/<name>/` (user scope), or a client-specific
-`.<client>/skills/` directory. Project scope overrides user scope on a name collision.
-Source control the folder when it is meant to travel with a project; otherwise keep
-reusable personal skills in the user-scope path.
+`.<client>/skills/` directory. The open standard's own client guide calls "project overrides
+user on a collision" the universal convention, but in practice it is not: at least one major
+client reverses that precedence for personal-vs-project, and at least one other does not
+resolve collisions at all: same-named skills from different scopes can simply coexist, and
+an explicit by-name invocation can silently fail to resolve when more than one match exists
+(see `references/spec-reference.md`). Do not design around any collision-precedence rule;
+pick a name unlikely to collide with a system-bundled skill or another author's skill in the
+first place. Source control the folder when it is meant to travel with a project; otherwise
+keep reusable personal skills in the user-scope path.
 
 To build a clean copy (dev-only `tests/`/`evals/` and caches stripped) and install it in one
 step, use the bundled installer. It validates first, defaults to `~/.agents/skills/`, and
@@ -182,17 +199,19 @@ python -m scripts.install_skill ./skill-maker --force
 `--target` takes any skills directory, and `--dry-run` reports what would happen without
 writing.
 
-Some hosts (a hosted skills app or a skills API) additionally accept a zipped `.skill` upload. If
-your client can surface a file to the user and they want a downloadable artifact, package
-it:
+Some hosts (a hosted skills app or a skills API) additionally accept a zipped `.skill`
+upload, a real, officially-tooled format on at least one major client (a `ZIP_DEFLATED`
+archive rooted at the skill folder's own contents, validated before zipping), not merely a
+generic convenience, though it remains absent from the open standard itself. If your client
+can surface a file to the user and they want a downloadable artifact, package it:
 
 ```bash
 python -m scripts.package_skill ./skill-maker ./dist
 ```
 
 This validates first, then writes `<name>.skill`. Hand the user the resulting path. The
-`.skill` zip is a host convenience, not part of the open standard; the portable artifact
-is the folder.
+`.skill` zip is a client-specific packaging format, not part of the open standard; the
+portable artifact is always the folder.
 
 ---
 

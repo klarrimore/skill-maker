@@ -1,0 +1,44 @@
+{
+  "expectations": [
+    {
+      "text": "Copies the read-only fixture to a writable path before editing it, and does not modify evals/files/broken-skill/SKILL.md in place",
+      "passed": true,
+      "evidence": "worked on a copy at weekly-log-summary/SKILL.md; the staged read-only fixture (mode 444) is byte-identical to before the run, confirmed by diff and by `git diff --exit-code` on the real repo fixture evals/files/broken-skill/SKILL.md"
+    },
+    {
+      "text": "Identifies that the name 'Weekly_Log_Summary' is not kebab-case and does not match the directory name",
+      "passed": true,
+      "evidence": "transcript-notes.md item 1: 'Non-kebab-case name, and name not matching the parent directory... uppercase letters and an underscore, both disallowed'"
+    },
+    {
+      "text": "Identifies that the description contains angle brackets, which the bundled validator rejects as a skill-maker hardening measure (the spec is silent and skills-ref does not check them)",
+      "passed": true,
+      "evidence": "transcript-notes.md item 2: names the exact hardening rationale, including that it's shared with Anthropic's and OpenAI's own tools per spec-provenance.md"
+    },
+    {
+      "text": "Identifies that 'author' and 'version' are not recognized top-level frontmatter fields and belong under metadata",
+      "passed": true,
+      "evidence": "transcript-notes.md item 3: names both fields and the ALLOWED_PROPERTIES rule"
+    },
+    {
+      "text": "Fixes every identified violation so the frontmatter uses only the recognized fields with a kebab-case name matching the directory and a bracket-free description",
+      "passed": true,
+      "evidence": "new frontmatter: name=weekly-log-summary (matches directory), description bracket-free and expanded to state 'when to use it', author/version moved under metadata; grade_artifacts.py: 10/10, exit 0"
+    },
+    {
+      "text": "Re-runs the validator (skills-ref validate or python -m scripts.quick_validate) and reports that the skill now validates",
+      "passed": true,
+      "evidence": "quick_validate on the broken original: exit 1, 'Unexpected key(s)...'; on the fixed copy: exit 0, 'Skill is valid!'; both independently re-confirmed during grading"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "process_notes": [
+    "Went beyond the graded expectations: also fixed the description's missing 'when to use it' half (a real, named spec-reference.md rule that neither validator nor grader checks, so it would not have shown up as a failure either way) rather than stopping at 'the tool exits 0'.",
+    "quick_validate stops at the first fatal check in script order, so its error message on the broken original only names the author/version violation even though name and description were also broken; the agent correctly noted this rather than treating the single printed message as the complete violation list."
+  ]
+}

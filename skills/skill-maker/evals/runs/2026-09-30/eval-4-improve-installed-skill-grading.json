@@ -1,0 +1,40 @@
+{
+  "expectations": [
+    {
+      "text": "Preserves the skill name and directory name `standup-summary` unchanged (no -v2 or -improved suffix)",
+      "passed": true,
+      "evidence": "output directory and frontmatter name both remain 'standup-summary'"
+    },
+    {
+      "text": "Copies the read-only installed skill to a writable location before editing it",
+      "passed": true,
+      "evidence": "staged fake-home fixture (mode 444/555) confirmed byte-identical after the run; work happened in a separate outputs/standup-summary/ copy"
+    },
+    {
+      "text": "Improves the body to cover the missing on-call rotation summary rather than rewriting unrelated parts",
+      "passed": true,
+      "evidence": "added a dedicated on-call/rotation step (step 3) plus a required explicit 'Not mentioned' value; transcript-notes.md's 'Why I scoped the edit this way' documents deliberate restraint (kept single-file, no scripts/, name/directory untouched, kept metadata.author)"
+    },
+    {
+      "text": "Keeps the frontmatter free of client-specific extension fields",
+      "passed": true,
+      "evidence": "grade_artifacts.py: 'Frontmatter uses only recognized fields' passed, 10/10 overall, exit 0"
+    },
+    {
+      "text": "Re-validates the edited skill (skills-ref validate or python -m scripts.quick_validate) and reports it valid",
+      "passed": true,
+      "evidence": "quick_validate: exit 0, 'Skill is valid!', run both before and after a self-caught fix; independently re-confirmed during grading"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  },
+  "process_notes": [
+    "No subagents were available in this environment; the agent correctly substituted the manual path from references/environment-adaptations.md ('No subagents') by writing 3 synthetic test cases and running them by hand rather than skipping validation of its own work.",
+    "This self-testing caught a real gap (no 'Not reported' fallback for a missing Done/Doing field) before handoff, then fixed it and re-validated -- a genuine instance of the skill's own 'improving the skill' loop working as intended, even in a degraded environment.",
+    "Description grew from 200 to 265 characters, past the authoring-guide's 'aim for 256' suggested target but well under the 512 working ceiling and not close to quick_validate's 973-1024 warning band. Self-flagged in transcript-notes.md with reasoning, rather than either reflexively trimming it back or ignoring the guideline silently. Not a graded expectation for eval 4."
+  ]
+}

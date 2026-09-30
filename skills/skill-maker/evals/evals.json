@@ -11,6 +11,7 @@
         "The frontmatter name is lowercase alphanumeric (Unicode lowercase letters allowed) with hyphens only, has no leading, trailing, or consecutive hyphen, is 1-64 characters, and exactly matches the skill directory name",
         "The frontmatter uses only the recognized fields (name, description, license, compatibility, metadata, allowed-tools) and introduces no client-specific extension",
         "The description states both what the skill does and when to use it, is 1024 characters or fewer, and contains no angle brackets",
+        "The produced SKILL.md contains no em dash (U+2014) anywhere in its frontmatter or body",
         "The SKILL.md body is written as imperative instructions (steps beginning with a verb), not as a description of the skill",
         "The SKILL.md body is under 500 lines; any depth beyond the core steps is disclosed into references/ behind an explicit read-this-when pointer",
         "The body carries task-specific guidance (concrete steps, formats, and edge cases) rather than generic platitudes such as 'handle errors appropriately'",

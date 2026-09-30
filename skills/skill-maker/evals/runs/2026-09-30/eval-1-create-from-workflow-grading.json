@@ -1,0 +1,64 @@
+{
+  "expectations": [
+    {
+      "text": "Produces a skill directory containing a SKILL.md file",
+      "passed": true,
+      "evidence": "error-log-standup-summary/SKILL.md produced; grade_artifacts.py confirms"
+    },
+    {
+      "text": "The frontmatter name is lowercase alphanumeric (Unicode lowercase letters allowed) with hyphens only, has no leading, trailing, or consecutive hyphen, is 1-64 characters, and exactly matches the skill directory name",
+      "passed": true,
+      "evidence": "name='error-log-standup-summary', dir='error-log-standup-summary'; grade_artifacts.py confirms"
+    },
+    {
+      "text": "The frontmatter uses only the recognized fields (name, description, license, compatibility, metadata, allowed-tools) and introduces no client-specific extension",
+      "passed": true,
+      "evidence": "frontmatter: name, description, license, compatibility, metadata only; grade_artifacts.py confirms"
+    },
+    {
+      "text": "The description states both what the skill does and when to use it, is 1024 characters or fewer, and contains no angle brackets",
+      "passed": true,
+      "evidence": "426 chars, no angle brackets (code-checked); text reads 'Pulls backend error logs...' (what) then 'Use for weekly error-log reviews... even when the word standup is not used' (when) (hand-checked against the actual SKILL.md)"
+    },
+    {
+      "text": "The produced SKILL.md contains no em dash (U+2014) anywhere in its frontmatter or body",
+      "passed": true,
+      "evidence": "grade_artifacts.py: clean"
+    },
+    {
+      "text": "The SKILL.md body is written as imperative instructions (steps beginning with a verb), not as a description of the skill",
+      "passed": true,
+      "evidence": "hand-checked: 'Default the window...', 'Ask directly...', 'Run scripts/aggregate_errors.py...', 'Fill in assets/standup_summary_template.md...', 'Do not group by raw message text...' throughout"
+    },
+    {
+      "text": "The SKILL.md body is under 500 lines; any depth beyond the core steps is disclosed into references/ behind an explicit read-this-when pointer",
+      "passed": true,
+      "evidence": "119 lines, well under budget; no references/ split needed at this size (grade_artifacts.py confirms line-budget check)"
+    },
+    {
+      "text": "The body carries task-specific guidance (concrete steps, formats, and edge cases) rather than generic platitudes such as 'handle errors appropriately'",
+      "passed": true,
+      "evidence": "hand-checked: named real commands (kubectl/aws logs/gcloud logging), a concrete masking algorithm for UUIDs/hex/numbers-glued-to-units, exact field-name flags, exit-code-2 semantics, specific gotchas (raw-message grouping, unknown-service bucket, platform query caps). Would clearly PASS the new evals/judges/generic-procedure-detection.md criterion (not run as part of this grading pass; see Phase 4)."
+    },
+    {
+      "text": "Proposes or writes at least two realistic test-case prompts (for example in evals/evals.json) for the new skill",
+      "passed": true,
+      "evidence": "wrote 3 prompts to evals/evals.json: fixture-based dedup/window check, no-file kubectl-source check, overridden-window/service-scope generalization check"
+    },
+    {
+      "text": "Runs a validator (skills-ref validate or python -m scripts.quick_validate) against the new skill and reports the result",
+      "passed": true,
+      "evidence": "ran quick_validate (exit 0, 'Skill is valid!') and evals.grade_artifacts (10/10, exit 0); both independently re-confirmed during grading; skills-ref itself not installed in this environment, noted explicitly rather than silently skipped"
+    }
+  ],
+  "summary": {
+    "passed": 10,
+    "failed": 0,
+    "total": 10,
+    "pass_rate": 1.0
+  },
+  "process_notes": [
+    "Self-caught and fixed 3 real bugs before handoff: a double error-type prefix in the aggregation script, a regex that failed to mask digits glued to units (e.g. '3000ms'), and a self-inconsistent --prev-state/--state-out usage example in SKILL.md that would have silently broken the week-over-week 'new' flag on every real second run.",
+    "Steps 5 (evaluate/improve with user feedback) and 6 (description trigger-optimization loop) were explicitly not run and disclosed as such, since no live user or multi-run trigger loop was available in this non-interactive pass. Not a graded expectation for eval 1, but relevant context for Phase 3 error analysis (FM-7 territory)."
+  ]
+}

@@ -244,6 +244,32 @@ class TestValidateSkill(unittest.TestCase):
             (False, "Description cannot contain angle brackets (< or >)"),
         )
 
+    # --- em dash hardening -------------------------------------------------
+    def test_rejects_em_dash_in_body(self):
+        skill_dir = self._write_skill(
+            "my-skill",
+            "---\nname: my-skill\ndescription: Does a thing.\n---\nBody with an em dash — here.\n",
+        )
+        valid, message = validate_skill(skill_dir)
+        self.assertIs(valid, False)
+        self.assertIn("em dash", message)
+
+    def test_rejects_em_dash_in_description(self):
+        skill_dir = self._write_skill(
+            "my-skill", "---\nname: my-skill\ndescription: Does a thing — well.\n---\nBody.\n"
+        )
+        valid, message = validate_skill(skill_dir)
+        self.assertIs(valid, False)
+        self.assertIn("em dash", message)
+
+    def test_accepts_hyphen_without_em_dash(self):
+        # A plain hyphen must not trip the em-dash check.
+        skill_dir = self._write_skill(
+            "my-skill",
+            "---\nname: my-skill\ndescription: Does a thing - well, mostly.\n---\nBody - fine.\n",
+        )
+        self.assertEqual(validate_skill(skill_dir), (True, "Skill is valid!"))
+
     def test_rejects_description_over_1024_chars(self):
         desc = "x" * 1025
         skill_dir = self._write_skill(
@@ -339,6 +365,27 @@ class TestBodyWarnings(unittest.TestCase):
         desc = "x" * 972
         skill_dir = self._write(f"---\nname: my-skill\ndescription: {desc}\n---\nBody.\n")
         self.assertFalse(any("within 5% of the 1024 limit" in w for w in body_warnings(skill_dir)))
+
+    def test_flags_body_over_codex_byte_budget(self):
+        # A single long line: over Codex's ~8000-byte cap but under the line/token
+        # budgets, so only the Codex byte-budget advisory fires.
+        body = "x" * 8100
+        skill_dir = self._write(f"---\nname: my-skill\ndescription: x\n---\n{body}\n")
+        warnings = body_warnings(skill_dir)
+        self.assertTrue(any("Codex hard-truncates" in w for w in warnings))
+        self.assertFalse(any("tokens (recommended under" in w for w in warnings))
+
+    def test_no_codex_byte_warning_under_budget(self):
+        body = "x" * 7000
+        skill_dir = self._write(f"---\nname: my-skill\ndescription: x\n---\n{body}\n")
+        self.assertFalse(any("Codex hard-truncates" in w for w in body_warnings(skill_dir)))
+
+    def test_flags_non_ascii_name(self):
+        skill_dir = self._write("---\nname: café\ndescription: x\n---\nBody.\n")
+        self.assertTrue(any("non-ASCII" in w for w in body_warnings(skill_dir)))
+
+    def test_no_ascii_warning_for_ascii_name(self):
+        self.assertFalse(any("non-ASCII" in w for w in body_warnings(self._write(GOOD))))
 
 
 class TestExclusionHelpers(unittest.TestCase):

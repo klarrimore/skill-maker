@@ -9,11 +9,11 @@ enforce a rule, identify its layer.
 
 ## The three authority tiers
 
-- **Spec-mandated** — text in `docs/specification.mdx`. This file is authoritative for
+- **Spec-mandated**: text in `docs/specification.mdx`. This file is authoritative for
   format requirements.
-- **Documented recommendation** — the `/skill-creation/` and `/client-implementation/`
+- **Documented recommendation**: the `/skill-creation/` and `/client-implementation/`
   guides. These advise skill authors and client implementors.
-- **Implementation behavior / de-facto convention** — what `skills-ref` does, and what
+- **Implementation behavior / de-facto convention**: what `skills-ref` does, and what
   clients happen to share. These do not add normative requirements.
 
 The standard's repository `AGENTS.md` states both points directly. It says
@@ -25,17 +25,18 @@ Under this rule, `skills-ref` behavior is a demonstration, not a second spec.
 
 Apply this taxonomy to every rule you meet:
 
-1. **Spec constraint** — a requirement stated in `docs/specification.mdx`. Example: the
+1. **Spec constraint**: a requirement stated in `docs/specification.mdx`. Example: the
    `name` field is required and at most 64 characters. Treat these as mandatory for
    conformance.
-2. **Portability rule** — guidance from the guides, or from cross-client convention. It
+2. **Portability rule**: guidance from the guides, or from cross-client convention. It
    decides whether a skill runs across clients, not whether the spec accepts it. Example:
    extra top-level fields are spec-tolerated but not portable.
-3. **Skill-maker hardening** — an extra check in this repo's bundled validator
+3. **Skill-maker hardening**: an extra check in this repo's bundled validator
    (`quick_validate.py`). These checks are stricter than the spec and are explicitly not
-   spec requirements. The validator rejects angle brackets in `description`, rejects
-   fields outside the six, and rejects more than one `SKILL.md`. It warns on the
-   500-line and 5000-token body budgets. Treat these as house rules, not standard rules.
+   spec requirements. The validator rejects angle brackets in `description`, rejects the
+   em dash character (U+2014) anywhere in `SKILL.md`, rejects fields outside the six, and
+   rejects more than one `SKILL.md`. It warns on the 500-line and 5000-token body budgets.
+   Treat these as house rules, not standard rules.
 
 A skill can pass the spec and fail hardening. Say which one you are enforcing.
 
@@ -89,23 +90,43 @@ Treat `skills-ref` as a reference and demonstration library, not a stable depend
 The primary sources do not verify the following claims. Treat them as de-facto knowledge,
 or as client-specific behavior, and check a client's docs before relying on them.
 
-- **Angle-bracket rejection.** The spec is silent, and `skills-ref` does not check it. The
-  claim comes from outside agentskills.io. Treat the bundled check as hardening only.
-- **Reserved words in names.** The standard defines no reserved-word list. Client-side
-  rejection is possible but undocumented.
+- **Angle-bracket rejection.** The spec is silent, and `skills-ref` does not check it. That
+  part is unchanged: this is not an agentskills.io requirement anywhere. It is not an
+  isolated invention of this skill's own validator, though: both Anthropic's and OpenAI's own
+  official skill-authoring tools apply the identical check (same function name, same control
+  flow, same error string), which is strong evidence of one shared `skill-creator`-style
+  tooling lineage rather than independent inventions. Neither of those clients' actual
+  runtimes enforce it; only their authoring-time tooling does, the same way this skill's
+  bundled validator is hardening applied at authoring time, not a runtime guarantee. Treat
+  the check as inherited, cross-client authoring-tool hardening, not a spec requirement and
+  not proof any runtime rejects angle brackets.
+- **Reserved words in names.** The standard defines no reserved-word list, and that remains
+  true of agentskills.io itself. It is no longer undocumented everywhere: Claude's own
+  platform documentation names its reserved substrings for `name` outright (its own product
+  and vendor name, "anthropic" and "claude"), and Claude Code separately reserves the
+  skill-folder names `synced` and `anthropic-skills`. Client-side rejection on this axis is
+  real and citable for that one client; still check each client you target rather than
+  assuming the list generalizes.
 - **`~/.agent/skills/` (singular).** The client guide lists `~/.agents/skills/` (plural).
   The singular path is unverified.
-- **Zipped `.skill` uploads.** The spec defines folders, not archives. Some hosts offer
-  zip upload as a convenience. No first-party page mentions `.skill`.
+- **Zipped `.skill` uploads.** The spec defines folders, not archives, and no agentskills.io
+  page mentions `.skill`. That half still holds. It is not unattested everywhere: Anthropic's
+  own official skill-authoring tooling defines and produces this exact format (a
+  `ZIP_DEFLATED` archive rooted at the skill folder's own contents, validated before
+  zipping). Treat `.skill` as a real, client-specific packaging convention with a first-party
+  source on that one client, not as an open-standard requirement.
 - **Ecosystem commands.** `gh skill` and `npx skills add <owner/repo>` do not appear in the
   first-party docs. They are ecosystem tooling, not standard behavior.
 - **`metadata.version`.** The spec defines no `version` field and no versioning scheme.
   `metadata` is an arbitrary key-value map. Do not treat `version` as a spec field.
 - **Skill-to-skill composition.** The docs never discuss composition. "Unsupported" is an
   inference from silence, not a documented prohibition.
-- **Client extension fields.** `context: fork`, `user-invocable`, `model`,
-  `disable-model-invocation`, and `agents/openai.yaml` do not appear on agentskills.io.
-  They may be real per client, but verify each against that client's docs.
+- **Client extension fields.** `context: fork`, `user-invocable`, `model`, and
+  `agents/openai.yaml` do not appear on agentskills.io. `disable-model-invocation` does
+  appear once, as a worked example in the first-party client guide
+  (`adding-skills-support.mdx`), but it is not a spec-defined field there or anywhere else
+  first-party. None of these are spec fields; verify each against the relevant client's own
+  docs.
 - **Token counts.** The spec says about 100 tokens for tier 1; the client guide says about
   50 to 100. Tier 2 is "under 5000 tokens recommended." Exact tokenization is
   model-dependent, and the spec names no tokenizer.

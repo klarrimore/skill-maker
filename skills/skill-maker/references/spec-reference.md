@@ -72,14 +72,28 @@ metadata:
 - Lowercase alphanumeric and hyphens (`-`). The spec is ambiguous: the prose says "unicode
   lowercase alphanumeric characters", but its parenthetical says `a-z, 0-9`. The reference
   validator normalizes NFKC and accepts any lowercase `isalnum()` character, so `技能`,
-  `мой-навык`, and `café` are valid there. State which validator you follow.
+  `мой-навык`, and `café` are valid there. State which validator you follow. For maximum
+  cross-client portability, prefer ASCII-only names regardless: at least one major client's
+  own authoring validator accepts only `^[a-z0-9-]+$` and will reject a Unicode name this
+  skill's own validator (and `skills-ref`) accepts, and a decomposed-Unicode name (a base
+  letter plus a separate combining accent mark) can pass an NFKC-normalized 64-character
+  check while exceeding a client that counts raw, unnormalized code points.
 - Must not start or end with a hyphen.
 - Must not contain consecutive hyphens (`--`).
-- Must match the parent directory name.
+- Must match the parent directory name. This is enforced by the reference validator
+  (`skills-ref`) and by this skill's own validator, but at least one major client does not
+  check it as a per-upload rule at all, and another checks it only as a fallback used when
+  `name` is absent from frontmatter. Keep matching it regardless: it is the strictly stricter
+  rule, and it is what keeps a skill portable to the reference validator and to clients that
+  do enforce it.
 - Some clients reserve certain words (often their own product or vendor name) and reject a name
   containing one on upload. This is a client upload convention, not part of the standard. The
-  standard defines no reserved-word list, so check the client you target. As a portable default,
-  avoid vendor or brand names.
+  standard defines no reserved-word list, so check the client you target. This is confirmed,
+  not hypothetical: Claude's own platform documentation states outright that `name` cannot
+  contain the substrings "anthropic" or "claude", and Claude Code separately reserves the
+  skill-folder names `synced` and `anthropic-skills` for its own synced-skills mechanism. As a
+  portable default, avoid vendor or brand names in `name` (see also
+  `references/authoring-guide.md` for the same rule applied to a skill's body text).
 
 Valid: `pdf-processing`, `data-analysis`, `code-review`.
 Invalid: `PDF-Processing` (uppercase), `-pdf` (leading hyphen), `pdf--processing` (double
@@ -95,8 +109,10 @@ hyphen).
 - State both what the skill does and when to use it.
 - Include specific keywords that help an agent recognize relevant tasks.
 - The spec is silent on angle brackets (`<`, `>`), and the official `skills-ref` validator does
-  not check them. The bundled validator rejects them as a skill-maker hardening measure, since
-  some clients may sanitize markup. This is not a format constraint.
+  not check them. The bundled validator rejects them as hardening, inherited from the same
+  authoring-tool convention that both Anthropic's and OpenAI's own official skill-authoring
+  tools apply (see `references/spec-provenance.md` for the detail), since some clients may
+  sanitize markup. This is not a format constraint, and no runtime is known to enforce it.
 - Do not approach the 1024 ceiling by keyword-stuffing. A description within about 5% of it
   (roughly 973+ characters) is a maintenance trap: the next trigger-phrase addition silently
   breaches it. Re-check the length after every edit, not only at first authoring. An edit that
@@ -112,6 +128,13 @@ extraction." Poor: "Helps with PDFs."
 - The reference validator enforces only the upper bound; an empty string passes it. So
   "validate before distributing" is not a guarantee of the minimum.
 - Include only when real environment requirements exist.
+- A portability gotcha specific to Codex: its own bundled skill-authoring validator (not its
+  runtime loader, which ignores unrecognized frontmatter keys entirely) allow-lists only five
+  of the standard's six fields and omits `compatibility`. A skill that legitimately uses
+  `compatibility` (spec-legal, accepted by this skill's own validator, and loads fine on
+  Codex's actual runtime) will still be flagged as an "Unexpected key" failure by Codex's own
+  authoring tool. If you hit this while targeting Codex specifically, it is that tool's gap,
+  not a sign your skill is wrong.
 
 Examples: "Requires a non-interactive shell and network access"; "Requires git, docker, jq, and
 access to the internet"; "Requires Python 3.14+ and uv".
@@ -122,7 +145,12 @@ The Markdown body after the frontmatter holds the instructions. There are no for
 restrictions; write what helps the agent perform the task. The agent loads the entire body once
 it activates the skill, so keep it under 500 lines and roughly 5000 tokens, and split longer
 material into referenced files. Recommended ingredients: step-by-step instructions, examples of
-inputs and outputs, and common edge cases.
+inputs and outputs, and common edge cases. Treat the 5000-token figure as an upper bound, not a
+target: as of 2026-09-30, Codex hard-truncates a selected skill's body at roughly 8000 bytes
+(about 2000 tokens) in its default configuration, well under half the spec's own
+recommendation, silently cutting the body off mid-instruction rather than erroring. Named
+here because the number is concrete and citable, not because every client is assumed to
+behave the same way.
 
 When referencing other files, use relative paths from the skill root and keep references one
 level deep. Avoid deeply nested reference chains. Tell the agent when to read each file (for
@@ -196,10 +224,25 @@ cross-client convention:
 | User | `~/.<client>/skills/` | The client's native location |
 | User | `~/.agents/skills/` | Cross-client interoperability |
 
+`~/.agents/skills/` and a repo-local `.agents/skills/` are deliberately this skill's own
+installer defaults (`scripts/install_skill.py`). At least one major client's own source code
+calls its older, product-specific per-user skills path deprecated (kept only for backward
+compatibility), even though that same client's own bundled skill-authoring tool still tells
+authors to write to the old path, an inconsistency in that client's own tooling, not a
+reason to prefer the old path here.
+
 Discovery scans both project and user scope. `.agents/skills/` is the cross-client convention;
-some clients also read `.claude/skills/` and other paths. Project-level skills override
-user-level skills on a collision. The client guide recommends gating project-level loading on a
-trust check, because project skills may be untrusted.
+some clients also read `.claude/skills/` and other paths. The client guide calls
+"project-level skills override user-level skills on a collision" the universal convention
+across existing implementations, but at least two major clients do not actually follow it:
+one reverses the precedence for the personal/project pair (and adds tiers, such as an
+enterprise scope, the standard does not define), and another does not override at all:
+same-named skills from different scopes coexist, and a bare by-name mention only resolves
+when the name is unambiguous, silently failing to select anything otherwise. Do not design a
+skill's naming or distribution around any single collision rule; choose a name unlikely to
+collide with a system-bundled skill or another author's skill, and expect a collision to
+surface as ambiguity, not a predictable winner. The client guide recommends gating
+project-level loading on a trust check, because project skills may be untrusted.
 
 ## Validation and distribution
 

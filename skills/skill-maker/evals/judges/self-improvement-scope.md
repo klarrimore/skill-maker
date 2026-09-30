@@ -1,6 +1,6 @@
 # Self-Improvement Judge: Scope Control
 
-Status: seed judge prompt. Replace the examples with human-labeled training-split traces before using this judge for calibrated benchmark decisions.
+Status: seed judge prompt. Replace the examples with human-labeled training-split traces before using this judge for calibrated benchmark decisions. A 4-case dry run (2026-09-30) confirmed this prompt parses and discriminates on fresh cases; see evals/runs/2026-09-30/judge-dry-run.md. This is not calibration.
 
 Feed the judge only:
 

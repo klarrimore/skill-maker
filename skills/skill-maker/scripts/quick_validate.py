@@ -5,8 +5,9 @@ Quick validation script for skills - zero-network spec checker.
 Fallback for the reference validator `skills-ref validate ./your-skill` (the standard's
 reference/demonstration library, not a production SDK). Enforces the agentskills.io
 frontmatter constraints and emits soft warnings on the SKILL.md body budget. As a
-skill-maker hardening measure it also rejects angle brackets in the description; the
-spec is silent on them and `skills-ref` does not check them. Keeps the
+skill-maker hardening measure it also rejects angle brackets in the description and the
+em dash character (U+2014) anywhere in the file; the spec is silent on both and
+`skills-ref` does not check them. Keeps the
 validate_skill(skill_path) -> (bool, message) contract that package_skill.py imports.
 """
 
@@ -26,6 +27,10 @@ ROOT_EXCLUDED_DIR_PARTS = {'evals', 'tests'}
 # Soft budget for the SKILL.md body (recommendation, not a hard limit, per the spec).
 BODY_LINE_BUDGET = 500
 BODY_TOKEN_BUDGET = 5000  # approximated as chars / 4
+# Codex's MAX_SKILL_PROMPT_BYTES hard truncation cap (~2000 tokens) on a selected
+# skill's body in its default configuration, as of 2026-09-30. Tighter than the
+# open standard's own 5000-token recommendation above, so it gets its own warning.
+BODY_BYTE_BUDGET_CODEX = 8000
 
 # The six recognized agentskills.io frontmatter fields. Anything else is a
 # client-specific extension: still spec-conformant, but it breaks portability.
@@ -96,6 +101,15 @@ def validate_skill(skill_path):
         frontmatter, _body = parse_frontmatter(content)
     except ValueError as e:
         return False, str(e)
+
+    # Reject the em dash (U+2014) anywhere in the file: a skill-maker authoring rule
+    # (see SKILL.md's body-writing guidance), enforced the same way as the angle-bracket
+    # hardening check below since it likewise admits no exception.
+    if '—' in content:
+        return False, (
+            "SKILL.md cannot contain the em dash character (U+2014) in its "
+            "frontmatter or body. Use a comma, period, colon, or parentheses instead."
+        )
 
     # Check for unexpected properties (excluding nested keys under metadata)
     unexpected_keys = set(frontmatter.keys()) - ALLOWED_PROPERTIES
@@ -176,6 +190,7 @@ def body_warnings(skill_path):
         return warnings
     lines = body.count('\n') + 1
     approx_tokens = len(body) // 4
+    body_bytes = len(body.encode('utf-8'))
     if lines > BODY_LINE_BUDGET:
         warnings.append(
             f"SKILL.md body is {lines} lines (recommended under {BODY_LINE_BUDGET}). "
@@ -186,12 +201,30 @@ def body_warnings(skill_path):
             f"SKILL.md body is roughly {approx_tokens} tokens (recommended under "
             f"{BODY_TOKEN_BUDGET}). Move detail into references/ and point to it."
         )
+    if body_bytes > BODY_BYTE_BUDGET_CODEX:
+        warnings.append(
+            f"SKILL.md body is {body_bytes} bytes. Codex hard-truncates a selected "
+            f"skill's body at about {BODY_BYTE_BUDGET_CODEX} bytes (~2000 tokens) by "
+            f"default, well under the open standard's own 5000-token recommendation. "
+            f"If you need Codex compatibility, trim well under this."
+        )
     # Description ceiling advisory: within 5% of the 1024 limit is a maintenance trap.
     desc = (frontmatter.get('description') or '').strip()
     if 973 <= len(desc) <= 1024:
         warnings.append(
             f"Description is {len(desc)} characters, within 5% of the 1024 limit. "
             f"The next trigger-phrase edit will breach it; trim now."
+        )
+    # Name portability advisory: at least one major client's own authoring
+    # validator accepts only ASCII names, even though the spec and this
+    # validator accept Unicode.
+    name = (frontmatter.get('name') or '').strip()
+    if name and not name.isascii():
+        warnings.append(
+            f"Name '{name}' contains non-ASCII characters. The spec and this validator "
+            f"accept Unicode names, but at least one major client's own authoring tool "
+            f"requires ASCII-only names and will reject this one. Prefer ASCII for "
+            f"cross-client portability."
         )
     return warnings
 

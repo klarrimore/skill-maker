@@ -62,9 +62,9 @@ class TestPackageSkill(unittest.TestCase):
         self.assertEqual(result.name, "my-skill.skill")
         with zipfile.ZipFile(result) as zf:
             names = zf.namelist()
-        # Files are stored relative to the skill's parent, so paths are prefixed
-        # with the skill folder name.
-        self.assertIn("my-skill/SKILL.md", names)
+        # The zip is rooted at the skill folder's own contents (Anthropic's .skill
+        # convention and the claude.ai upload flow), not wrapped in a subfolder.
+        self.assertIn("SKILL.md", names)
 
     def test_creates_output_directory_if_absent(self):
         skill_dir = self._make_skill()
@@ -93,8 +93,8 @@ class TestPackageSkill(unittest.TestCase):
         with zipfile.ZipFile(result) as zf:
             names = zf.namelist()
 
-        self.assertIn("my-skill/SKILL.md", names)
-        self.assertIn("my-skill/references/guide.md", names)
+        self.assertIn("SKILL.md", names)
+        self.assertIn("references/guide.md", names)
         for forbidden in ("tests/", "evals/", "__pycache__", ".pytest_cache", ".pyc", ".DS_Store"):
             with self.subTest(forbidden=forbidden):
                 self.assertFalse(
@@ -112,7 +112,7 @@ class TestPackageSkill(unittest.TestCase):
         result = Path(_package_quietly(skill_dir, self.out_dir))
         with zipfile.ZipFile(result) as zf:
             names = zf.namelist()
-        self.assertIn("my-skill/references/evals/note.md", names)
+        self.assertIn("references/evals/note.md", names)
 
 
 if __name__ == "__main__":

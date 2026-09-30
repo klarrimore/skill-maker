@@ -58,7 +58,7 @@ skill-maker/                         repository (workspace)
         evals.json                   task-eval definitions
         trigger_queries.json         should- and should-not-trigger cases
         grade_artifacts.py           code-check grader, emits grading.json
-        failure-modes.md             FM-1 through FM-14 error-analysis catalogue
+        failure-modes.md             FM-1 through FM-16 error-analysis catalogue
         judges/                      seed LLM-as-judge prompts for subjective self-improvement checks
         files/                       valid and broken skill fixtures
   docs/                              dev config, not shipped
@@ -72,7 +72,7 @@ skill-maker/                         repository (workspace)
   AGENTS.md                          repo-wide agent guidance (dev config, not shipped)
   CLAUDE.md                          Claude Code bootstrap (routes to AGENTS.md)
   .github/                           copilot-instructions.md and instructions/ (client bootstrap)
-  CHANGELOG.md
+  Project_Architecture_Blueprint.md  generated repository architecture reference
   README.md  .gitignore
 ```
 

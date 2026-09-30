@@ -102,6 +102,13 @@ def grade(skill_dir):
         not over_budget,
         over_budget[0] if over_budget else "under budget",
     ))
+
+    raw_text = skill_md.read_text(encoding="utf-8")
+    results.append(_check(
+        "SKILL.md contains no em dash (U+2014) in frontmatter or body",
+        "—" not in raw_text,
+        "clean" if "—" not in raw_text else "em dash (U+2014) found in SKILL.md",
+    ))
     return results
 
 

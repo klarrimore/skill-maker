@@ -1,5 +1,48 @@
 # Changelog - skill-maker
 
+## [1.9.0] - 2026-09-30
+
+### Added
+
+- Added a hard validator check rejecting the em dash character (U+2014) anywhere in `SKILL.md`, matching the existing angle-bracket hardening precedent, in `quick_validate.py` and `grade_artifacts.py`, with matching tests
+- Added `evals/judges/generic-procedure-detection.md`: a seed judge closing the FM-5 coverage gap (generic procedure vs. extracted expertise), matching the existing two judges' structure
+- Added a 3-criterion hand-grading rubric for eval 5's safety-refusal check in `evals/README.md`, closing the FM-9 coverage gap without adding a fourth uncalibrated judge
+- Added FM-15 (em dash) and FM-16 (blind fix/ignore of a soft validator warning) to `evals/failure-modes.md`
+- Ran the task-eval suite for the first time ever: evals 1, 2, 4, 5, 6 executed live via independent subagent sessions against the current skill, graded, and recorded in `evals/runs/2026-09-30/`; eval 3 deferred as a documented cost decision
+- Ran a no-metrics dry run of all three seed judges (12 fresh cases total) confirming each parses and discriminates correctly; explicitly not a substitute for real human-labeled calibration, recorded in `evals/runs/2026-09-30/judge-dry-run.md`
+
+### Changed
+
+- Rewrote `SKILL.md` Step 7 to distinguish hard validator failures (spec violations, hardening rejections; must fix) from soft warnings (body/name-budget tradeoffs; weigh and state the choice)
+- Updated `evals/failure-modes.md`'s Provenance section with the first real trace-review pass: which modes were observed, checked-and-confirmed-absent, or not yet exercised, replacing the prior all-hypothesized status for FM-1 through FM-14
+- Documented two new eval-harness findings surfaced by the live run: eval 5's prompt can trip Anthropic's own real-time cyber safeguard before the model responds (FM-9 remains genuinely untested by that run), and eval 6's substitute input fixture leaks harness metadata from eval 4 (both recorded in `evals/README.md` and the run summary, not fixed in this pass)
+- Bumped skill-maker to v1.9
+
+## [1.8.0] - 2026-09-30
+
+### Added
+
+- Added a Codex-specific body-truncation warning to `quick_validate.py` (`BODY_BYTE_BUDGET_CODEX`, about 8000 bytes), since Codex hard-truncates a selected skill's body well under the open standard's own 5000-token recommendation
+- Added a non-ASCII name portability warning to `quick_validate.py`: at least one major client's own authoring validator accepts only ASCII names, even though `skills-ref` and this validator accept Unicode
+- Added a rule to `authoring-guide.md`: do not name a specific host product or vendor in a skill's own `name` or body prose, backed by Claude's reserved-word rejection and Codex's mechanical text rewrite on import
+- Added a rule to `SKILL.md`: do not use the em dash character (U+2014) anywhere in a skill's frontmatter or body
+
+### Changed
+
+- Corrected `spec-reference.md` and `SKILL.md` to state that the directory-must-equal-name rule is enforced by the reference validator and this skill's own validator, but not required by every client
+- Corrected the stated collision precedence ("project overrides user") in `spec-reference.md` and `SKILL.md`: at least one major client reverses it for personal-vs-project and another does not resolve collisions at all
+- Reframed the `.skill` zip format in `spec-reference.md`, `spec-provenance.md`, and `SKILL.md` as real and first-party on at least one major client, not a generic host convenience
+- Confirmed and documented Claude's reserved substrings ("anthropic", "claude") for `name` in `spec-reference.md` and `spec-provenance.md`; no longer described as wholly undocumented
+- Documented a Codex-specific gotcha in `spec-reference.md`: Codex's own bundled authoring validator omits `compatibility` from its allow-list even though the field is spec-legal
+- Documented that `~/.codex/skills` is deprecated in Codex's own source, confirming this skill's existing `~/.agents/skills` installer default is already correct
+- Reframed angle-bracket rejection in `spec-provenance.md` and `spec-reference.md` as an inherited convention shared with Anthropic's and OpenAI's own official skill-authoring tools, not an isolated skill-maker invention
+- Removed every em dash from the skill's shipped files
+- Bumped skill-maker to v1.8
+
+### Fixed
+
+- Fixed `package_skill.py` to root the `.skill` zip at the skill folder's own contents instead of wrapping it in a subfolder, matching Anthropic's documented convention and the claude.ai upload flow's stated requirement; updated the three dependent assertions in `tests/test_package_skill.py`
+
 ## [1.7.0] - 2026-09-17
 
 ### Added
@@ -161,6 +204,8 @@
 
 - Removed an installed skill that was checked in by mistake.
 
+[1.9.0]: https://github.com/klarrimore/skill-maker/compare/v1.8...v1.9
+[1.8.0]: https://github.com/klarrimore/skill-maker/compare/v1.7...v1.8
 [1.7.0]: https://github.com/klarrimore/skill-maker/compare/v1.6...v1.7
 [1.6.0]: https://github.com/klarrimore/skill-maker/compare/v1.5...v1.6
 [1.5.0]: https://github.com/klarrimore/skill-maker/compare/v1.4...v1.5

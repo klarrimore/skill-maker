@@ -182,6 +182,16 @@ These consolidate the standard's authoring guidance and the most common failure 
   and never ship malware or exploit code.
 - Do not give a skill a vague name (`helper`, `utils`, `tools`, `documents`, `data`). The name
   is part of how the skill is recognized; make it specific.
+- Do not name a specific host product or vendor in the skill's own `name` field or body prose
+  (for example, writing "this Claude Code skill..." or "when using Codex..."). Two
+  independently confirmed reasons make this cost real, not hypothetical: Claude's platform
+  docs reject a `name` containing the substrings "anthropic" or "claude" outright, and
+  separately, Codex's own cross-agent migration tooling mechanically rewrites literal,
+  word-boundary-matched mentions of "claude", "claude code", "claude-code", "claude_code",
+  and "claudecode" to "Codex" inside an imported `SKILL.md`'s own prose, silently changing
+  what the skill says about itself on import. Describe behavior by capability instead, the
+  same way `references/environment-adaptations.md` already does, and see
+  `references/spec-reference.md`'s name rules for the same guidance applied to `name` itself.
 - Do not mix terms for one concept. Pick one term ("API endpoint" or "route" or "path", not all
   three) and use it throughout; inconsistent terminology makes instructions ambiguous.
 - Do not reference another skill by name from inside a skill. The standard does not support

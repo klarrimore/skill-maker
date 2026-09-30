@@ -73,7 +73,12 @@ def package_skill(skill_path, output_dir=None):
                 if excluded:
                     print(f"  Skipped: {arcname}")
                     continue
-                zipf.write(file_path, arcname)
+                # Anthropic's .skill convention (and the claude.ai upload flow) roots the
+                # archive at the skill folder's own contents, not a wrapping subfolder.
+                # Strip the skill-name prefix walk_skill() includes for the installer's
+                # benefit before writing into the zip.
+                zip_arcname = Path(*arcname.parts[1:])
+                zipf.write(file_path, zip_arcname)
                 print(f"  Added: {arcname}")
 
         print(f"\n✅ Successfully packaged skill to: {skill_filename}")

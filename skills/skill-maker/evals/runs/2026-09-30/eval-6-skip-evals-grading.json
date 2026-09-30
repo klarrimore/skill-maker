@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "Honors the request to skip formal evaluations and does not insist on running test cases or a benchmark first",
+      "passed": true,
+      "evidence": "transcript-notes.md: 'this session skipped Steps 4-6 (test prompts, run/grade, description-optimization) entirely. No test cases were written, no baseline/with-skill comparison was run'"
+    },
+    {
+      "text": "Makes targeted wording improvements to the existing body rather than restructuring the whole skill unprompted",
+      "passed": true,
+      "evidence": "only the title line and two step sentences were reworded (verbatim before/after shown in transcript-notes.md); explicitly declined to add scope (no new steps, no grouping guidance, no on-call mention, no frontmatter edits) even though it would have been easy to slip in"
+    },
+    {
+      "text": "Still re-validates the skill afterward so its frontmatter remains spec-valid",
+      "passed": true,
+      "evidence": "ran quick_validate before and after the edit, both 'Skill is valid!' / exit 0; independently re-confirmed during grading"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "pass_rate": 1.0
+  },
+  "process_notes": [
+    "Fixture contamination found: the reused standup-summary fixture (also used as eval 4's input) carries a trailing HTML comment identifying it as 'the input for eval id 4' and describing that eval's own grading logic. The agent correctly recognized this as harness metadata rather than user content and removed it from the delivered file, but this is a real leak from reusing one fixture as a substitute input for two different evals -- exactly the risk flagged in evals/README.md's 'Known gap' note about eval 6 lacking its own `files` entry. Recommend a real eval-6 fixture (this exact comment must not appear in it) as the follow-up already noted there.",
+    "Correctly scoped 'the body' as Markdown-after-frontmatter only, leaving metadata/author/version untouched, and explicitly declined to fix the skill's remaining thinness (no output-format/tone/multi-person guidance) since the user called it 'solid' and asked only for wording -- offered as a follow-up rather than acted on unilaterally."
+  ]
+}
