@@ -194,6 +194,45 @@ Tracks version progression in Improve mode. Located at workspace root.
 
 ---
 
+## request.json (revise operation)
+
+The revision request stored at `<workspace>/runs/<run-id>/request.json` uses
+sanitized `$ISOLATED/...` path placeholders instead of live temporary or persistent
+filesystem paths. This prevents stored records from exposing the isolated staging
+directory layout.
+
+```json
+{
+  "protocol": "skill-eval/v1",
+  "operation": "revise",
+  "run_id": "v1-revise",
+  "skill_path": "$ISOLATED/source/pdf",
+  "candidate_path": "$ISOLATED/candidate/pdf",
+  "output_dir": "$ISOLATED/output",
+  "training_failures": [
+    {
+      "eval_id": 1,
+      "expectations": [
+        {"text": "file_exists: {\"path\": \"summary.json\"}", "evidence": "summary.json is missing"}
+      ],
+      "artifacts": []
+    }
+  ]
+}
+```
+
+**Fields:**
+- `protocol`: `skill-eval/v1`.
+- `operation`: `revise`.
+- `run_id`: Unique per iteration (e.g. `v1-revise`).
+- `skill_path`, `candidate_path`, `output_dir`: Sanitized path placeholders.
+  The live paths pointed to a system temporary directory outside the workspace
+  and were cleaned up after the revision completed.
+- `training_failures`: Only train-split failures with cited artifact metadata.
+  Held-out prompts, labels, results, and scores are never included.
+
+---
+
 ## grading.json
 
 Output from the `skill-eval/v1` runner. Located at

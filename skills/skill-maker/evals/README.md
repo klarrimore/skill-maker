@@ -20,9 +20,11 @@ lives under `scripts/` and is shipped so another skill can use the same contract
 
 ## Run the suite
 
-Run from `skills/skill-maker/`:
+Run from `skills/skill-maker/`. The adapter is optional for `audit` and `benchmark`:
 
 ```bash
+python -m scripts.quick_validate .                              # strict (delivery default)
+python -m scripts.quick_validate . --mode import --json          # import (compatibility inspection)
 python -m scripts.skill_eval audit . --workspace /tmp/skill-maker-audit
 python -m scripts.skill_eval run . --workspace /tmp/skill-maker-run \
   --runs 1 --adapter-arg python3 --adapter-arg tests/fixtures/fake_eval_adapter.py
@@ -39,8 +41,22 @@ python -m scripts.skill_eval run . --workspace /tmp/skill-maker-trigger \
   --trigger --runs 3 --adapter-arg python3 --adapter-arg /path/to/adapter.py
 ```
 
-The adapter is optional for `audit` and `benchmark`. Without one, follow the manual fallback in
-`../references/environment-adaptations.md`; do not fabricate model metrics.
+Without an adapter, follow the manual fallback in `../references/environment-adaptations.md`;
+do not fabricate model metrics.
+
+## Audit warnings
+
+The offline audit (`skill_eval audit`) emits portable-resource warnings alongside schema and
+spec violations:
+
+- `skill.allowed-tools` — frontmatter contains the experimental pre-approval field.
+- `resource.unaddressed.<path>` — a packaged file under `references/` or `assets/` is not named
+  in the SKILL.md body. Direct files only; nested references get a depth warning instead.
+- `resource.reference-depth.<path>` — file sits below `references/<subdir>/` instead of
+  directly under `references/`.
+- `script.unlisted.<path>` — a bundled script under `scripts/` is not named in the body.
+
+Add explicit one-line purpose pointers to clear resource/script findings.
 
 ## Fixture safety
 

@@ -73,9 +73,10 @@ metadata:
   lowercase alphanumeric characters", but its parenthetical says `a-z, 0-9`. The reference
   validator normalizes NFKC and accepts any lowercase `isalnum()` character, so `技能`,
   `мой-навык`, and `café` are valid there. State which validator you follow. For maximum
-  cross-client portability, prefer ASCII-only names regardless: at least one major client's
+  cross-client portability, **prefer ASCII-only names** regardless: at least one major client's
   own authoring validator accepts only `^[a-z0-9-]+$` and will reject a Unicode name this
-  skill's own validator (and `skills-ref`) accepts, and a decomposed-Unicode name (a base
+  skill's own validator (and `skills-ref`) accepts. The bundled validator's strict mode emits a
+  non-ASCII warning; ASCII names are the generated default. A decomposed-Unicode name (a base
   letter plus a separate combining accent mark) can pass an NFKC-normalized 64-character
   check while exceeding a client that counts raw, unnormalized code points.
 - Must not start or end with a hyphen.
@@ -191,6 +192,11 @@ Rule of thumb: for cross-agent compatibility, stick to `name`, `description`, an
 body. Put any environment dependency in `compatibility`, not in a nonstandard field. Note any
 deliberate platform-lock in `compatibility` so users are not surprised.
 
+Host extensions (client-specific frontmatter fields, install paths, plugin manifests, hosted
+skill IDs, marketplace metadata) are adapter concerns, not portable schema. They belong in
+target-specific contracts outside the canonical artifact. Do not invent a host schema when no
+target was requested.
+
 ## Portability operations
 
 The `SKILL.md` format is identical across skills-compatible clients. Runtime, distribution, and
@@ -244,7 +250,23 @@ collide with a system-bundled skill or another author's skill, and expect a coll
 surface as ambiguity, not a predictable winner. The client guide recommends gating
 project-level loading on a trust check, because project skills may be untrusted.
 
-## Validation and distribution
+## Validation: strict versus import
+
+The bundled validator (`scripts/quick_validate.py`) has two modes:
+
+- **Strict** (default): portable-spec validation used by packaging and installation. Errors are
+  portability violations (missing fields, invalid names, client extensions, angle brackets, em
+  dash, multiple SKILL.md files). A skill must pass strict mode to be packaged or installed.
+- **Import**: read-only compatibility inspection for an existing client-specific skill. Only
+  fatal structural issues (missing SKILL.md, unparseable YAML, missing or empty description) are
+  errors. Portability violations (client extensions, name mismatches, angle brackets, em dash)
+  are warnings so the skill can be examined before conversion.
+
+A skill that passes import mode but fails strict mode must be explicitly converted before it can
+be packaged: copy the skill, resolve warnings, and pass strict validation. Import-mode validity
+never authorizes packaging or installation.
+
+## Security posture
 
 - Reference validator: `skills-ref validate ./your-skill`. This is the standard's demonstration
   and reference library, not a production SDK, and code contributions to it are currently

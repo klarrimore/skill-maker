@@ -1,3 +1,4 @@
+import json
 import shutil
 import tempfile
 import unittest
@@ -8,12 +9,16 @@ from scripts.quick_validate import (
     BODY_LINE_BUDGET,
     _counts_as_skill_md,
     body_warnings,
+    inspect_skill,
     validate_skill,
 )
 
 # A minimal frontmatter body that is spec-valid on its own; individual tests
 # override one field at a time so a single assertion pins a single branch.
 GOOD = "---\nname: my-skill\ndescription: Does a thing.\n---\nBody.\n"
+
+# A client-specific skill with an extension field and mismatched name/directory.
+CLIENT_SKILL = "---\nname: client-thing\ndescription: Some custom behavior.\ncontext: fork\n---\nBody.\n"
 
 
 class TestValidateSkill(unittest.TestCase):
@@ -69,14 +74,6 @@ class TestValidateSkill(unittest.TestCase):
     def test_accepts_unicode_name_accented(self):
         skill_dir = self._write_skill(
             "café", "---\nname: café\ndescription: x\n---\nBody.\n"
-        )
-        self.assertEqual(validate_skill(skill_dir), (True, "Skill is valid!"))
-
-    def test_empty_name_string_skips_name_checks(self):
-        # Characterization: an empty name is present (not "missing") and the
-        # `if name:` guard skips kebab/length/dir-match, so this validates.
-        skill_dir = self._write_skill(
-            "my-skill", "---\nname: ''\ndescription: x\n---\nBody.\n"
         )
         self.assertEqual(validate_skill(skill_dir), (True, "Skill is valid!"))
 
@@ -217,6 +214,23 @@ class TestValidateSkill(unittest.TestCase):
         self.assertIs(valid, False)
         self.assertIn("must match the parent directory name", message)
 
+    def test_rejects_empty_name(self):
+        """empty/whitespace-only name is now a strict error (plan item)."""
+        skill_dir = self._write_skill(
+            "my-skill", "---\nname: ''\ndescription: x\n---\nBody.\n"
+        )
+        valid, message = validate_skill(skill_dir)
+        self.assertIs(valid, False)
+        self.assertIn("empty", message.lower())
+
+    def test_rejects_whitespace_only_name(self):
+        skill_dir = self._write_skill(
+            "my-skill", "---\nname: '   '\ndescription: x\n---\nBody.\n"
+        )
+        valid, message = validate_skill(skill_dir)
+        self.assertIs(valid, False)
+        self.assertIn("empty", message.lower())
+
     # --- description validation ------------------------------------------
     def test_rejects_non_string_description(self):
         skill_dir = self._write_skill(
@@ -344,6 +358,165 @@ class TestValidateSkill(unittest.TestCase):
         # validate_skill accepts a str path as well as a Path.
         skill_dir = self._write_skill("my-skill", GOOD)
         self.assertEqual(validate_skill(str(skill_dir)), (True, "Skill is valid!"))
+
+
+class TestInspectSkill(unittest.TestCase):
+    """Tests for inspect_skill() covering strict and import modes."""
+
+    def setUp(self):
+        self.tmp_path = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp_path, ignore_errors=True)
+
+    def _write_skill(self, dir_name, content):
+        skill_dir = self.tmp_path / dir_name
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(content)
+        return skill_dir
+
+    # --- report shape ----------------------------------------------------
+    def test_report_shape(self):
+        skill_dir = self._write_skill("my-skill", GOOD)
+        report = inspect_skill(skill_dir, mode="strict")
+        self.assertEqual(report["mode"], "strict")
+        self.assertIn("valid", report)
+        self.assertIn("errors", report)
+        self.assertIn("warnings", report)
+        self.assertIsInstance(report["errors"], list)
+        self.assertIsInstance(report["warnings"], list)
+
+    # --- strict mode rejects client extension ----------------------------
+    def test_strict_rejects_client_extension(self):
+        skill_dir = self._write_skill("client-thing", CLIENT_SKILL)
+        report = inspect_skill(skill_dir, mode="strict")
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("Unexpected key" in e for e in report["errors"]))
+
+    def test_strict_rejects_directory_name_mismatch(self):
+        # CLIENT_SKILL has name "client-thing" but dir is "other" => mismatch
+        skill_dir = self._write_skill("other", CLIENT_SKILL)
+        report = inspect_skill(skill_dir, mode="strict")
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("must match the parent directory name" in e for e in report["errors"]))
+
+    # --- import mode allows client extension but warns ------------------
+    def test_import_allows_client_extension_with_warning(self):
+        skill_dir = self._write_skill("client-thing", CLIENT_SKILL)
+        report = inspect_skill(skill_dir, mode="import")
+        self.assertTrue(report["valid"])
+        self.assertTrue(any("Unexpected key" in w for w in report["warnings"]))
+
+    def test_import_warns_directory_name_mismatch(self):
+        skill_dir = self._write_skill("other", CLIENT_SKILL)
+        report = inspect_skill(skill_dir, mode="import")
+        self.assertTrue(report["valid"])
+        self.assertTrue(any("must match the parent directory name" in w for w in report["warnings"]))
+
+    # --- import mode still rejects missing/empty description ------------
+    def test_import_rejects_missing_description(self):
+        content = "---\nname: my-skill\n---\nBody.\n"
+        skill_dir = self._write_skill("my-skill", content)
+        report = inspect_skill(skill_dir, mode="import")
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("Missing 'description'" in e for e in report["errors"]))
+
+    def test_import_rejects_empty_description(self):
+        content = "---\nname: my-skill\ndescription: '   '\n---\nBody.\n"
+        skill_dir = self._write_skill("my-skill", content)
+        report = inspect_skill(skill_dir, mode="import")
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("Description must be non-empty" in e for e in report["errors"]))
+
+    def test_import_rejects_invalid_yaml(self):
+        skill_dir = self._write_skill("my-skill", "---\nname: [unclosed\n---\nBody.\n")
+        report = inspect_skill(skill_dir, mode="import")
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("Invalid YAML" in e for e in report["errors"]))
+
+    def test_import_rejects_missing_skill_md(self):
+        skill_dir = self.tmp_path / "empty"
+        skill_dir.mkdir()
+        report = inspect_skill(skill_dir, mode="import")
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("SKILL.md not found" in e for e in report["errors"]))
+
+    # --- import mode warns on empty name but does not error ------------
+    def test_import_warns_on_empty_name(self):
+        skill_dir = self._write_skill(
+            "my-skill", "---\nname: ''\ndescription: x\n---\nBody.\n"
+        )
+        report = inspect_skill(skill_dir, mode="import")
+        self.assertTrue(report["valid"])
+        self.assertTrue(any("empty" in w.lower() for w in report["warnings"]))
+
+    # --- JSON report shape is identical to dict --------------------------
+    def test_json_serializable(self):
+        skill_dir = self._write_skill("my-skill", GOOD)
+        report = inspect_skill(skill_dir, mode="strict")
+        # Must survive json.dumps without error.
+        encoded = json.dumps(report)
+        decoded = json.loads(encoded)
+        self.assertEqual(decoded["mode"], "strict")
+        self.assertTrue(decoded["valid"])
+
+    def test_json_mode_field_present(self):
+        skill_dir = self._write_skill("client-thing", CLIENT_SKILL)
+        report = inspect_skill(skill_dir, mode="import")
+        self.assertEqual(json.loads(json.dumps(report))["mode"], "import")
+
+    # --- package/install must reject import-only artifact ----------------
+    def test_strict_rejects_what_import_warns(self):
+        """Guarantee: strict mode errors on fields that import only warns on."""
+        skill_dir = self._write_skill("client-thing", CLIENT_SKILL)
+        strict = inspect_skill(skill_dir, mode="strict")
+        imp = inspect_skill(skill_dir, mode="import")
+        self.assertFalse(strict["valid"])
+        self.assertTrue(imp["valid"])
+        # The import-based validate_skill wrapper returns first strict error.
+        self.assertFalse(validate_skill(skill_dir)[0])
+
+    def test_import_rejects_missing_description_after_good_yaml(self):
+        """A valid YAML mapping missing description errors in import mode."""
+        content = "---\nname: my-skill\n---\nBody.\n"
+        skill_dir = self._write_skill("my-skill", content)
+        report = inspect_skill(skill_dir, mode="import")
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("Missing 'description'" in e for e in report["errors"]))
+
+    def test_import_rejects_unreadable_skill_md(self):
+        skill_dir = self.tmp_path / "unreadable"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(GOOD)
+        (skill_dir / "SKILL.md").chmod(0o000)
+        try:
+            report = inspect_skill(skill_dir, mode="import")
+            self.assertFalse(report["valid"])
+            self.assertTrue(any("Cannot read SKILL.md" in e for e in report["errors"]))
+        finally:
+            (skill_dir / "SKILL.md").chmod(0o644)
+
+    def test_invalid_mode_fails_at_api(self):
+        """inspect_skill rejects invalid mode strings at the API entry."""
+        skill_dir = self._write_skill("my-skill", GOOD)
+        report = inspect_skill(skill_dir, mode="bogus")
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("Invalid mode" in e for e in report["errors"]))
+        report2 = inspect_skill(skill_dir, mode="StRiCT")
+        self.assertFalse(report2["valid"])
+        self.assertTrue(any("Invalid mode" in e for e in report2["errors"]))
+
+    def test_numeric_frontmatter_key_strict_and_import(self):
+        """Non-string frontmatter keys must not crash inspect_skill."""
+        # YAML accepts numeric keys; the validator must not crash formatting them.
+        content = "---\nname: my-skill\ndescription: x\n1: numeric\n---\nBody.\n"
+        skill_dir = self._write_skill("my-skill", content)
+        # strict mode
+        report = inspect_skill(skill_dir, mode="strict")
+        self.assertFalse(report["valid"])
+        self.assertTrue(any("Unexpected key" in e for e in report["errors"]))
+        # import mode
+        report2 = inspect_skill(skill_dir, mode="import")
+        self.assertTrue(report2["valid"])
+        self.assertTrue(any("Unexpected key" in w for w in report2["warnings"]))
 
 
 class TestBodyWarnings(unittest.TestCase):

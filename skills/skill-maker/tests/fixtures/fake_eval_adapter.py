@@ -1,9 +1,36 @@
 #!/usr/bin/env python3
 """Deterministic skill-eval/v1 adapter used by integration tests and smoke."""
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
+
+
+_LEAK_EVIDENCE_MARKERS = {"grading.json", "trigger_results.json", "benchmark.json", "history.json"}
+
+
+def _check_ancestor_leakage(path):
+    """Walk ancestors of `path` and refuse if any contain evidence markers.
+
+    This simulates an adversarial adapter that could try to read workspace
+    data by walking up from the provided paths.
+    """
+    current = Path(path).resolve()
+    # Walk up at most 10 levels to avoid infinite loops on /.
+    for _ in range(10):
+        parent = current.parent
+        if parent == current:
+            break
+        for marker in _LEAK_EVIDENCE_MARKERS:
+            if (parent / marker).exists():
+                return f"ancestor {parent} contains {marker}"
+        if (parent / "evals").exists():
+            return f"ancestor {parent} contains evals/ tree"
+        if (parent / "tests").exists():
+            return f"ancestor {parent} contains tests/ tree"
+        current = parent
+    return None
 
 
 def main():
@@ -11,6 +38,14 @@ def main():
     protocol = "skill-eval/v1"
     operation = request.get("operation")
     if operation == "revise":
+        # Leakage check: walk ancestors of every adapter-provided path.
+        for key in ("skill_path", "candidate_path", "output_dir"):
+            value = request.get(key)
+            if value:
+                leak = _check_ancestor_leakage(value)
+                if leak:
+                    print(json.dumps({"protocol": protocol, "status": "error", "error": f"leakage detected via {key}: {leak}"}))
+                    return
         source = Path(request["skill_path"])
         destination = Path(request["candidate_path"])
         if (source / "evals").exists() or (source / "tests").exists():

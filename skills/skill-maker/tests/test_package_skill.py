@@ -52,7 +52,18 @@ class TestPackageSkill(unittest.TestCase):
         self.assertIsNone(_package_quietly(skill_dir, self.out_dir))
         self.assertFalse(any(self.out_dir.glob("*.skill")) if self.out_dir.exists() else False)
 
-    # --- happy path -------------------------------------------------------
+    def test_refuses_import_only_artifact(self):
+        """A skill valid only in import mode (client extension) must not package."""
+        skill_dir = self.tmp_path / "client-ext"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(
+            "---\nname: client-ext\ndescription: Has client extension\ncontext: fork\n---\nBody.\n"
+        )
+        # Should pass import mode but fail strict → validate_skill rejects it.
+        self.assertIsNone(_package_quietly(skill_dir, self.out_dir))
+        self.assertFalse(any(self.out_dir.glob("*.skill")) if self.out_dir.exists() else False)
+
+# --- happy path -------------------------------------------------------
     def test_packages_valid_skill(self):
         skill_dir = self._make_skill()
         result = _package_quietly(skill_dir, self.out_dir)

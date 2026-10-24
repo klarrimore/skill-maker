@@ -27,13 +27,32 @@ The agent runs commands from the skill directory root. Write every script path r
 that root.
 
 List each script in `SKILL.md` with a one-line purpose. The agent runs only the scripts it
-knows exist.
+knows exist. The offline audit (`skill_eval audit`) warns about packaged scripts not named in
+the body; the audit requires the full skill-relative path (e.g. `scripts/run.py`), not just
+a basename that could match a file in a different directory.
 
 ```bash
 python -m scripts.quick_validate ./your-skill
 ```
 
 Run Python scripts as modules. Package-relative imports then resolve correctly.
+
+## Bundled script inspection checklist
+
+Every executable file under `scripts/` (except `__init__.py`) must pass this checklist before
+the skill is packaged:
+
+- [ ] Listed in `SKILL.md` with a one-line purpose and invocation example.
+- [ ] Non-interactive: no blocking prompts, reads input from flags, env vars, or stdin.
+- [ ] `--help` documents usage, arguments, and exit codes.
+- [ ] `--dry-run` available for every destructive operation.
+- [ ] Errors state what went wrong, what was expected, and what to try.
+- [ ] Structured output (JSON, CSV, TSV) on stdout; diagnostics on stderr.
+- [ ] Idempotent: rerunning does not corrupt state or duplicate side effects.
+- [ ] Safe defaults: read-only unless the user opts in to writes.
+- [ ] Dependencies declared inline (PEP 723, npm:, bundler/inline) or documented in
+      `compatibility`.
+- [ ] Output size kept predictable (under ~10K-30K chars; summarize or paginate large results).
 
 ## Make scripts self-contained
 

@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from datetime import datetime, timezone
@@ -78,9 +79,11 @@ def _audit_skill(skill_dir: Path) -> Dict[str, Any]:
     """Return a stable audit report without invoking any model or command."""
     skill_dir = Path(skill_dir).resolve()
     findings: List[Dict[str, Any]] = []
+    body = ""
     try:
-        frontmatter = _frontmatter(skill_dir)
-    except ConfigurationError:
+        content = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+        frontmatter, body = parse_frontmatter(content)
+    except (OSError, ValueError):
         frontmatter = {}
     valid, message = validate_skill(skill_dir)
     if not valid:
@@ -212,6 +215,60 @@ def _audit_skill(skill_dir: Path) -> Dict[str, Any]:
             "judge.schema", "error", "skill_maker_hardening", "open", "evals/judge_labels.json", str(exc),
             "Fix the judge-label contract.",
         ))
+
+    # --- portable-resource / progressive-disclosure warnings -------------
+    body_lower = (body or "").lower()
+    body_normalized = body_lower.replace("\\", "/")
+    packaged_root = skill_dir
+
+    # allowed-tools advisory: warn when present regardless of value
+    if "allowed-tools" in frontmatter:
+        findings.append(_finding(
+            "skill.allowed-tools", "warning", "advisory", "open", "SKILL.md",
+            "Frontmatter contains 'allowed-tools'. Pre-approval is client-specific "
+            "and requires explicit trust review before a client grants it.",
+            "Remove allowed-tools from the portable core; document in compatibility if needed.",
+        ))
+
+    # Walk packaged files for resource/script pointers
+    for file_path in sorted(skill_dir.rglob("*")):
+        if not file_path.is_file():
+            continue
+        rel = file_path.relative_to(packaged_root)
+        if should_exclude(Path(skill_dir.name) / rel):
+            continue
+        posix = rel.as_posix()
+
+        # Unlisted scripts
+        if posix.startswith("scripts/") and rel.name != "__init__.py":
+            if posix not in body_normalized:
+                findings.append(_finding(
+                    f"script.unlisted.{posix}", "warning", "advisory", "open", posix,
+                    f"Script '{posix}' is packaged but not named in SKILL.md.",
+                    "Add a one-line purpose and invocation pointer in SKILL.md.",
+                ))
+
+        # Unaddressed resources: only flag files directly under references/
+        # or assets/ (len(parts) == 2).  Files nested below a subdirectory
+        # (len(parts) > 2) get a resource.reference-depth warning instead.
+        if posix.startswith("references/") or posix.startswith("assets/"):
+            parts = posix.split("/")
+            # Nested references depth warning (files below references/<subdir>/...)
+            if posix.startswith("references/") and len(parts) > 2:
+                findings.append(_finding(
+                    f"resource.reference-depth.{posix}", "warning", "advisory", "open", posix,
+                    f"File '{posix}' is nested below a subdirectory of references/; "
+                    f"portable authoring keeps references one level from SKILL.md.",
+                    "Flatten into references/<topic>.md or point to the subdirectory purpose in SKILL.md.",
+                ))
+
+            # Direct resource: warn only when the full path is absent from the body.
+            if len(parts) == 2 and posix not in body_normalized:
+                findings.append(_finding(
+                    f"resource.unaddressed.{posix}", "warning", "advisory", "open", posix,
+                    f"Resource '{posix}' is packaged but not named in SKILL.md.",
+                    "Add an explicit 'read/use this when …' pointer in SKILL.md.",
+                ))
 
     errors = sum(1 for item in findings if item["severity"] == "error" and item["status"] == "open")
     warnings = sum(1 for item in findings if item["severity"] == "warning" and item["status"] == "open")
@@ -982,43 +1039,70 @@ def improve_skill(
             shutil.rmtree(str(candidate_container))
         candidate = candidate_container / suite.skill_name
         candidate_container.mkdir(parents=True, exist_ok=True)
-        candidate.mkdir(parents=True, exist_ok=True)
-        revise_root = workspace / "iterations" / version / "revision"
-        revise_dir = revise_root / "output"
-        revision_source = revise_root / "source"
-        revise_dir.mkdir(parents=True, exist_ok=True)
-        _copy_portable_skill(current, revision_source)
-        request = {
-            "protocol": PROTOCOL,
-            "operation": "revise",
-            "run_id": "{}-revise".format(version),
-            "skill_path": str(revision_source),
-            "candidate_path": str(candidate),
-            "training_failures": packet,
-            "output_dir": str(revise_dir),
-        }
-        try:
-            revision = adapter.run(request).response
-            revision_error = None if revision.get("status") == "ok" else revision.get("error", "revision failed")
-        except AdapterError as exc:
-            revision = error_response(str(exc))
-            revision_error = str(exc)
-        if not revision_error:
+
+        # Isolated staging outside the workspace: the adapter cannot reach
+        # grading.json, history.json, evals/, or tests/ by walking ancestors
+        # from the provided paths.
+        with tempfile.TemporaryDirectory(prefix="skill-eval-revise-") as staging_name:
+            staging_root = Path(staging_name).resolve()
+            # Fail closed if the temp directory resolves inside the workspace.
             try:
-                evals_destination = candidate / "evals"
-                if evals_destination.exists():
-                    shutil.rmtree(str(evals_destination))
-                shutil.copytree(str(skill_dir / "evals"), str(evals_destination))
-            except OSError as exc:
-                revision_error = "could not attach evaluation data to candidate: {}".format(exc)
-        revision_store = EvidenceStore(workspace)
-        revision_store.write_run(request["run_id"], request, revision, {
-            "protocol": PROTOCOL,
-            "operation": "revise",
-            "status": "failed" if revision_error else "passed",
-            "error": revision_error,
-        })
-        EvidenceStore(workspace).append_audit("revise", request["run_id"], adapter.executable, True, "allow", "training-only-revision", "failed" if revision_error else "passed", [candidate])
+                staging_root.relative_to(workspace.resolve())
+                raise ConfigurationError(
+                    "temporary staging root {} is inside the workspace {}; "
+                    "set TMPDIR to a directory outside the workspace tree.".format(staging_root, workspace)
+                )
+            except ValueError:
+                pass  # expected: staging is outside workspace
+            iso_source = staging_root / "source" / suite.skill_name
+            iso_candidate = staging_root / "candidate" / suite.skill_name
+            iso_output = staging_root / "output"
+            iso_source.parent.mkdir(parents=True, exist_ok=True)
+            iso_output.mkdir(parents=True, exist_ok=True)
+            _copy_portable_skill(current, iso_source)
+            request = {
+                "protocol": PROTOCOL,
+                "operation": "revise",
+                "run_id": "{}-revise".format(version),
+                "skill_path": str(iso_source),
+                "candidate_path": str(iso_candidate),
+                "training_failures": packet,
+                "output_dir": str(iso_output),
+            }
+            try:
+                revision = adapter.run(request).response
+                revision_error = None if revision.get("status") == "ok" else revision.get("error", "revision failed")
+            except AdapterError as exc:
+                revision = error_response(str(exc))
+                revision_error = str(exc)
+            if not revision_error:
+                try:
+                    if not iso_candidate.is_dir() or not any(iso_candidate.iterdir()):
+                        raise OSError("candidate directory was not created or is empty")
+                    # Copy candidate into the evaluator-owned workspace
+                    if candidate.exists():
+                        shutil.rmtree(str(candidate))
+                    shutil.copytree(str(iso_candidate), str(candidate))
+                    evals_destination = candidate / "evals"
+                    if evals_destination.exists():
+                        shutil.rmtree(str(evals_destination))
+                    shutil.copytree(str(skill_dir / "evals"), str(evals_destination))
+                except (OSError, NotADirectoryError) as exc:
+                    revision_error = "could not process candidate: {}".format(exc)
+            # Persist sanitized paths in the stored request (never live filesystem paths).
+            sanitized_request = dict(request)
+            sanitized_request["skill_path"] = "$ISOLATED/source/{}".format(suite.skill_name)
+            sanitized_request["candidate_path"] = "$ISOLATED/candidate/{}".format(suite.skill_name)
+            sanitized_request["output_dir"] = "$ISOLATED/output"
+            revision_store = EvidenceStore(workspace)
+            revision_store.write_run(request["run_id"], sanitized_request, revision, {
+                "protocol": PROTOCOL,
+                "operation": "revise",
+                "status": "failed" if revision_error else "passed",
+                "error": revision_error,
+            })
+            EvidenceStore(workspace).append_audit("revise", request["run_id"], adapter.executable, True, "allow", "training-only-revision", "failed" if revision_error else "passed", [candidate])
+            # staging cleaned up by the with-block on exit.
         candidate_audit = _audit_skill(candidate) if not revision_error else {"passed": False, "summary": {"errors": 1}, "findings": [{"id": "revision.error", "severity": "error", "evidence": revision_error}]}
         if not candidate_audit["passed"]:
             history["iterations"].append({

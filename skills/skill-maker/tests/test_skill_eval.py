@@ -136,6 +136,171 @@ class TestSkillEvalIntegration(unittest.TestCase):
         revision_request = json.loads((self.workspace / "runs" / "v1-revise" / "request.json").read_text(encoding="utf-8"))
         self.assertNotIn("held-out", json.dumps(revision_request))
         self.assertFalse((self.workspace / "iterations" / "v1" / "revision" / "source" / "evals").exists())
+        # Sanitized paths: stored request must use $ISOLATED placeholders.
+        self.assertEqual(revision_request["skill_path"], "$ISOLATED/source/eval-suite-valid")
+        self.assertEqual(revision_request["candidate_path"], "$ISOLATED/candidate/eval-suite-valid")
+        self.assertEqual(revision_request["output_dir"], "$ISOLATED/output")
+        # No persistent revision source survives in the workspace.
+        self.assertFalse((self.workspace / "iterations" / "v1" / "revision" / "source").exists())
+
+    def test_improve_refuses_staging_inside_workspace(self):
+        """When temp directory resolves inside the workspace, improve must fail closed."""
+        from unittest import mock
+        # Force TemporaryDirectory to create inside the workspace.
+        inner = self.workspace / "staging"
+        inner.mkdir()
+        with mock.patch("tempfile.mkdtemp", return_value=str(inner)):
+            with self.assertRaises(ConfigurationError) as ctx:
+                improve_skill(FIXTURE, self.workspace, self.adapter, 1, 1)
+            self.assertIn("inside the workspace", str(ctx.exception))
+        shutil.rmtree(str(inner), ignore_errors=True)
+
+    def test_improve_refuses_symlinked_staging_into_workspace(self):
+        """A symlink-to-workspace as TMPDIR must also fail after resolve()."""
+        from unittest import mock
+        # Create a directory outside the workspace, then symlink workspace
+        # content into it so a lexical child "looks outside" but resolves inside.
+        outside = Path(tempfile.mkdtemp())
+        link = outside / "wslink"
+        link.symlink_to(self.workspace.resolve())
+        with mock.patch("tempfile.tempdir", str(link)):
+            with self.assertRaises(ConfigurationError) as ctx:
+                improve_skill(FIXTURE, self.workspace, self.adapter, 1, 1)
+            self.assertIn("inside the workspace", str(ctx.exception))
+        shutil.rmtree(str(outside), ignore_errors=True)
+
+
+class TestAuditPortableResources(unittest.TestCase):
+    """Integration tests for portable-resource audit warnings in _audit_skill."""
+
+    def setUp(self):
+        self.tmp_path = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp_path, ignore_errors=True)
+
+    def _make_skill(self, name="test-skill", body="---\nname: test-skill\ndescription: Test.\n---\nDo things.\n", extra_files=None):
+        skill_dir = self.tmp_path / name
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(body)
+        if extra_files:
+            for path, content in extra_files.items():
+                full = skill_dir / path
+                full.parent.mkdir(parents=True, exist_ok=True)
+                full.write_text(content)
+        return skill_dir
+
+    def test_clean_skill_no_resource_warnings(self):
+        """A skill with all resources/scripts named in the body gets no resource findings."""
+        body = (
+            "---\nname: test-skill\ndescription: Test.\n---\n"
+            "Use scripts/run.py for processing.\n"
+            "Read references/guide.md for setup.\n"
+            "Read assets/logo.png for branding.\n"
+        )
+        skill_dir = self._make_skill(body=body, extra_files={
+            "scripts/run.py": "print('hello')",
+            "scripts/__init__.py": "",
+            "references/guide.md": "# Guide",
+            "assets/logo.png": "meta",
+            "references/deep/topic.md": "# Topic",
+        })
+        report = _audit_skill(skill_dir)
+        # Should have no script.unlisted or resource.unaddressed findings,
+        # but resource.reference-depth for the nested file.
+        finding_ids = {f["id"] for f in report["findings"]}
+        self.assertNotIn("script.unlisted.scripts/run.py", finding_ids)
+        self.assertNotIn("resource.unaddressed.references/guide.md", finding_ids)
+        self.assertNotIn("resource.unaddressed.assets/logo.png", finding_ids)
+        # The deep reference stays as an advisory and gets no unaddressed warning.
+        self.assertIn("resource.reference-depth.references/deep/topic.md", finding_ids)
+        self.assertNotIn("resource.unaddressed.references/deep/topic.md", finding_ids)
+
+    def test_nested_asset_gets_no_direct_resource_warning(self):
+        """A file under assets/subdir/ should not get a resource.unaddressed finding."""
+        body = "---\nname: test-skill\ndescription: Test.\n---\nMain work.\n"
+        skill_dir = self._make_skill(body=body, extra_files={
+            "assets/deep/icon.png": "meta",
+        })
+        report = _audit_skill(skill_dir)
+        finding_ids = {f["id"] for f in report["findings"]}
+        self.assertNotIn("resource.unaddressed.assets/deep/icon.png", finding_ids)
+        self.assertNotIn("resource.reference-depth.assets/deep/icon.png", finding_ids)
+
+    def test_unlisted_and_unaddressed_produce_findings(self):
+        """A skill with unlisted scripts and unaddressed/nested resources gets warnings."""
+        body = (
+            "---\nname: test-skill\ndescription: Test.\nallowed-tools: Read\n---\n"
+            "Do the main work.\n"
+        )
+        skill_dir = self._make_skill(body=body, extra_files={
+            "scripts/run.py": "print('run')",
+            "scripts/helper.py": "print('helper')",
+            "references/guide.md": "# Guide",
+            "references/deep/topic.md": "# Deep topic",
+            "assets/icon.png": "meta",
+        })
+        report = _audit_skill(skill_dir)
+        finding_ids = {f["id"] for f in report["findings"]}
+        self.assertIn("skill.allowed-tools", finding_ids)
+        self.assertIn("script.unlisted.scripts/run.py", finding_ids)
+        self.assertIn("script.unlisted.scripts/helper.py", finding_ids)
+        self.assertIn("resource.unaddressed.references/guide.md", finding_ids)
+        self.assertIn("resource.unaddressed.assets/icon.png", finding_ids)
+        self.assertIn("resource.reference-depth.references/deep/topic.md", finding_ids)
+
+    def test_adding_body_pointers_clears_resource_warnings(self):
+        """After adding explicit pointers to SKILL.md, resource/script warnings disappear."""
+        body = (
+            "---\nname: test-skill\ndescription: Test.\n---\n"
+            "Use scripts/run.py for processing.\n"
+            "Read references/guide.md for setup.\n"
+        )
+        skill_dir = self._make_skill(body=body, extra_files={
+            "scripts/run.py": "print('run')",
+            "references/guide.md": "# Guide",
+        })
+        report = _audit_skill(skill_dir)
+        finding_ids = {f["id"] for f in report["findings"]}
+        self.assertNotIn("script.unlisted.scripts/run.py", finding_ids)
+        self.assertNotIn("resource.unaddressed.references/guide.md", finding_ids)
+
+    def test_allowed_tools_warns_regardless_of_value(self):
+        """allowed-tools warns even when empty string, so the check is presence not truthiness."""
+        body = "---\nname: test-skill\ndescription: Test.\nallowed-tools: ''\n---\nBody.\n"
+        skill_dir = self._make_skill(body=body)
+        report = _audit_skill(skill_dir)
+        finding_ids = {f["id"] for f in report["findings"]}
+        self.assertIn("skill.allowed-tools", finding_ids)
+
+    def test_same_basename_in_assets_does_not_mask_unlisted_script(self):
+        """A file assets/run.py must not suppress the unlisted-script warning for scripts/run.py."""
+        body = (
+            "---\nname: test-skill\ndescription: Test.\n---\n"
+            "Read assets/run.py for the runner.\n"
+        )
+        skill_dir = self._make_skill(body=body, extra_files={
+            "scripts/run.py": "print('run')",
+            "assets/run.py": "# runner reference",
+        })
+        report = _audit_skill(skill_dir)
+        finding_ids = {f["id"] for f in report["findings"]}
+        self.assertIn("script.unlisted.scripts/run.py", finding_ids)
+        self.assertNotIn("script.unlisted.assets/run.py", finding_ids)
+
+    def test_same_basename_in_assets_does_not_mask_unaddressed_resource(self):
+        """A file assets/guide.md must not suppress the unaddressed warning for references/guide.md."""
+        body = (
+            "---\nname: test-skill\ndescription: Test.\n---\n"
+            "Read assets/guide.md for the guide.\n"
+        )
+        skill_dir = self._make_skill(body=body, extra_files={
+            "references/guide.md": "# Guide",
+            "assets/guide.md": "# Asset guide",
+        })
+        report = _audit_skill(skill_dir)
+        finding_ids = {f["id"] for f in report["findings"]}
+        # references/guide.md must still be flagged even though assets/guide.md is named.
+        self.assertIn("resource.unaddressed.references/guide.md", finding_ids)
+        self.assertNotIn("resource.unaddressed.assets/guide.md", finding_ids)
 
 
 if __name__ == "__main__":

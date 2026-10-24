@@ -305,22 +305,30 @@ The following directories are development-only and are removed from packaged or 
 
 ### 6.3 `scripts/quick_validate.py`: policy layer
 
-**Purpose:** Performs zero-network validation of a skill directory.
+**Purpose:** Performs zero-network validation of a skill directory. Two modes:
 
-**Hard checks observed:**
+- **Strict** (default): portable-spec validation used by packaging and installation. Errors are portability violations; warnings are body-budget and cross-client advisories.
+- **Import**: read-only compatibility inspection for an existing client-specific skill. Only structural issues (missing SKILL.md, bad YAML, missing/empty description) are errors; portability violations are warnings.
 
-- Root `SKILL.md` exists.
-- Only one package-visible `SKILL.md` exists.
+Both modes share `inspect_skill(skill_path, mode) -> dict`, which returns a stable report `{"mode", "valid", "errors", "warnings"}`. The legacy `validate_skill(skill_path) -> (bool, message)` wraps `inspect_skill(..., mode="strict")` and returns the first error message, preserving backward compatibility for `package_skill.py`, `install_skill.py`, and `skill_eval.py`.
+
+**Hard checks observed (both modes):**
+
+- Root `SKILL.md` exists and is readable.
 - Frontmatter parses as a YAML mapping.
-- Only recognized top-level fields are used.
-- `name` and `description` are present and strings.
-- Name is normalized lowercase kebab-case and matches the directory name.
-- Description is non-empty, bracket-free, and within the 1024-character limit.
-- Compatibility is a string within its limit when present.
-- Metadata is a mapping when present.
-- The em dash character is rejected anywhere in `SKILL.md`.
+- `name` and `description` are present (import mode: name is optional, description is required).
+- Description is non-empty and within the 1024-character limit.
 
-**Soft checks observed:**
+**Additional hard checks (strict only):**
+
+- Only one package-visible `SKILL.md` exists (import mode: warns).
+- Only recognized top-level fields are used (six portable fields).
+- Name is normalized lowercase kebab-case, non-empty, and matches the directory name.
+- Description is bracket-free.
+- The em dash character is rejected anywhere in `SKILL.md`.
+- Optional-field type/length constraints (license, allowed-tools, compatibility, metadata).
+
+**Soft checks observed (both modes):**
 
 - Body line count over 500
 - Approximate body token count over 5000
@@ -328,7 +336,15 @@ The following directories are development-only and are removed from packaged or 
 - Description within 5% of the hard limit
 - Non-ASCII name portability warning
 
-**Contract:** `validate_skill` returns `(bool, message)`. `body_warnings` returns a list and never changes validity. Packaging and installation depend on the first contract.
+**CLI:**
+
+```bash
+python -m scripts.quick_validate <skill>                          # strict (default)
+python -m scripts.quick_validate <skill> --mode import            # import mode
+python -m scripts.quick_validate <skill> --mode import --json     # JSON report
+```
+
+Exit codes: 0 = valid for the selected mode, 1 = diagnostic errors or findings, 2 = usage or invalid-mode error.
 
 ### 6.4 `scripts/package_skill.py`: archive adapter
 
@@ -371,6 +387,16 @@ The following directories are development-only and are removed from packaged or 
 grades deterministic expectations, aggregates paired benchmarks, and promotes only a
 strictly better held-out candidate.
 
+**Audit layer:** The offline audit (`_audit_skill`) validates the skill spec, eval/trigger
+schemas, fixture paths, train/held-out coverage, failure-mode mappings, judge calibration,
+and safety boundaries. It emits portable-resource warnings:
+
+- `skill.allowed-tools` — experimental pre-approval field present in frontmatter.
+- `resource.unaddressed.<path>` — packaged file under `references/` or `assets/` not named
+  in `SKILL.md` body (direct children only; nested files get a depth warning instead).
+- `resource.reference-depth.<path>` — file below `references/<subdirectory>/` (nested assets are not flagged; only `references/` subdirectories trigger depth warnings).
+- `script.unlisted.<path>` — bundled script under `scripts/` not named in body.
+
 **Dependencies:** Reuses the validator, parser, strict eval models, command adapter, and
 workspace evidence store. It never becomes a runtime dependency of validation, packaging,
 or installation.
@@ -378,6 +404,15 @@ or installation.
 **Boundary:** It keeps prompts and transcripts in run artifacts, not audit metadata, and
 denies command expectations unless explicitly enabled. `evals/grade_artifacts.py` is only
 a compatibility wrapper for the shared deterministic artifact grader.
+
+**Improvement isolation:** The revise operation (`improve_skill`) uses a
+`tempfile.TemporaryDirectory` as an isolated staging root outside the evaluator workspace.
+The adapter receives paths inside this isolated root; workspace markers (grading.json,
+history.json, evals/, tests/) are unreachable by walking ancestors. A `resolve()`-based
+containment guard rejects configurations where the temp directory resolves inside the
+workspace. After a successful revision, the candidate is copied into the evaluator-owned
+`workspace/candidates/vN/`. The stored `request.json` persists sanitized `$ISOLATED/...`
+path placeholders rather than live filesystem paths. This is not an OS security sandbox.
 
 ### 6.7 Tests and fixtures
 
@@ -510,12 +545,14 @@ The installer cleans temporary state in a `finally` block. There is no cache inv
 
 Validation is intentionally split:
 
-- `validate_skill`: hard structural and policy checks
-- `body_warnings`: non-fatal portability and budget advisories
-- `grade_artifacts`: evidence-oriented checks for a produced skill
-- `unittest` and smoke: behavioral regression checks
+- `inspect_skill(skill_path, mode)` — shared diagnostic engine returning a `{"mode", "valid", "errors", "warnings"}` report. Both strict and import modes use this single entry point.
+- `validate_skill(skill_path)` — strict-only wrapper returning `(bool, message)`.
+- `body_warnings(skill_path)` — non-fatal portability and budget advisories.
+- `grade_artifacts(skill_path)` — evidence-oriented checks for a produced skill.
+- `_audit_skill(skill_path)` — evaluator offline audit reusing `validate_skill` and `body_warnings` plus eval-schema, trigger, judge-calibration, and portable-resource checks.
+- `unittest` and smoke: behavioral regression checks.
 
-This prevents packaging and installation from silently producing an artifact that the validator would reject.
+This prevents packaging and installation from silently producing an artifact that the validator would reject. Import mode is deliberately excluded from packaging and installation; only strict mode authorizes distribution.
 
 ## 9. Cross-cutting concerns
 
@@ -716,6 +753,7 @@ Any new template token must be added to both the asset and renderer, plus a smok
 When changing a public callable:
 
 - Preserve `validate_skill(path) -> (bool, message)` unless all consumers and tests are migrated together.
+- Preserve `inspect_skill(path, mode) -> dict` shape or update every consumer in one change.
 - Preserve installer exit meanings.
 - Preserve the `walk_skill` yielded tuple shape or update every consumer in one change.
 - Preserve archive root semantics.

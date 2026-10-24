@@ -6,7 +6,7 @@ and held-out selection. The evaluator keeps this loop separate from ordinary tas
 
 ## Build the query set
 
-Store about 20 unique records in `evals/trigger_queries.json` using the versioned object shape:
+Store about 20 balanced positive and negative records in `evals/trigger_queries.json`:
 
 ```json
 {
@@ -18,10 +18,21 @@ Store about 20 unique records in `evals/trigger_queries.json` using the versione
 }
 ```
 
-Use both labels in both splits. Positive cases should include indirect wording where the user
-does not name the skill. Negative cases should be domain-adjacent near misses that share terms
-but need another tool. Avoid obviously irrelevant negatives. Hold out roughly 40 percent of the
-queries and do not expose their labels or results to a revision adapter.
+Balance: both `train` and `held_out` splits must contain both `should_trigger: true` and
+`should_trigger: false` entries. Without both labels in a split the audit reports a coverage
+error.
+
+Negative queries should be **near-misses** that share domain vocabulary with the skill but need
+a different tool. For a PDF extraction skill, a near-miss negative would be "create a PDF"
+(creation, not extraction). Avoid obviously irrelevant negatives that the agent would never
+confuse.
+
+Hold out roughly 40 percent of the queries (typically 8 of 20). The evaluator never exposes
+held-out labels, prompts, or results to revision adapters. Run three repetitions per query
+so the trigger rate (≥0.5 = pass) is statistically meaningful.
+
+Run fresh sanity queries (not from the training or held-out sets) after every edit to detect
+unintended regression.
 
 ## Review and run
 

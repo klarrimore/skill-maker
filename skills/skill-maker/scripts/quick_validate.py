@@ -7,10 +7,24 @@ reference/demonstration library, not a production SDK). Enforces the agentskills
 frontmatter constraints and emits soft warnings on the SKILL.md body budget. As a
 skill-maker hardening measure it also rejects angle brackets in the description and the
 em dash character (U+2014) anywhere in the file; the spec is silent on both and
-`skills-ref` does not check them. Keeps the
-validate_skill(skill_path) -> (bool, message) contract that package_skill.py imports.
+`skills-ref` does not check them.
+
+Two modes:
+  - strict (default): portable-spec validation used by package/install. Errors are
+    portability violations; warnings are body-budget advisories.
+  - import: read-only compatibility inspection for an existing client-specific skill.
+    Only fatal structural issues (missing SKILL.md, bad YAML, missing/empty description)
+    are errors; portability issues are warnings so the skill can be examined before
+    conversion.
+
+Exports:
+  inspect_skill(skill_path, mode="strict") -> dict
+  validate_skill(skill_path) -> (bool, message)   [strict wrapper for existing callers]
+  body_warnings(skill_path) -> [str]
 """
 
+import argparse
+import json
 import sys
 import unicodedata
 from pathlib import Path
@@ -61,20 +75,41 @@ def _counts_as_skill_md(rel_path):
     return True
 
 
-def validate_skill(skill_path):
-    """Basic validation of a skill. Returns (is_valid, message)."""
-    skill_path = Path(skill_path).resolve()
+def inspect_skill(skill_path, mode="strict"):
+    """Shared diagnostic engine for skill validation.
 
-    # Check SKILL.md exists
+    Args:
+        skill_path: Path to skill directory (string or Path).
+        mode: "strict" for portable validation, "import" for compatibility inspection.
+
+    Returns:
+        dict: {"mode": mode, "valid": bool, "errors": [str], "warnings": [str]}
+    """
+    skill_path = Path(skill_path).resolve()
+    if mode not in ("strict", "import"):
+        return {"mode": mode, "valid": False, "errors": [f"Invalid mode '{mode}'. Must be 'strict' or 'import'."], "warnings": []}
+    report = {"mode": mode, "valid": False, "errors": [], "warnings": []}
+
+    # --- structural checks (both modes) ---
+
     skill_md = skill_path / 'SKILL.md'
     if not skill_md.exists():
-        return False, "SKILL.md not found"
+        report["errors"].append("SKILL.md not found")
+        return report
 
-    # A skill must contain exactly one SKILL.md, at <folder>/SKILL.md. Extra
-    # (nested) SKILL.md files are rejected on upload: hosts that accept a .skill
-    # upload accept exactly one per skill - only a filesystem-based client loads
-    # nested ones. package_skill produces an upload-bound .skill, so block here
-    # rather than ship an artifact that's guaranteed to fail on upload.
+    try:
+        content = skill_md.read_text()
+    except Exception as e:
+        report["errors"].append(f"Cannot read SKILL.md: {e}")
+        return report
+
+    try:
+        frontmatter, body = parse_frontmatter(content)
+    except ValueError as e:
+        report["errors"].append(str(e))
+        return report
+
+    # --- multiple SKILL.md check ---
     skill_md_files = [
         p for p in skill_path.rglob('SKILL.md')
         if _counts_as_skill_md(p.relative_to(skill_path))
@@ -84,105 +119,207 @@ def validate_skill(skill_path):
             str(p.relative_to(skill_path)) for p in skill_md_files
             if p.resolve() != skill_md.resolve()
         )
-        return False, (
+        msg = (
             f"Found {len(skill_md_files)} SKILL.md files, but a skill must contain "
-            f"exactly one at <folder>/SKILL.md. Hosts that accept a .skill upload reject "
-            f"multiple on upload (only a filesystem-based client loads nested skills). "
-            f"Extra: {', '.join(extras)}.\n"
-            "  - Separate skills: package each on its own, or build a plugin "
-            "(skills/<name>/SKILL.md).\n"
-            "  - Supporting docs: rename to non-SKILL.md files (e.g. references/<topic>.md).\n"
-            "  - Swept in by mistake: package only the one skill directory."
+            f"exactly one at <folder>/SKILL.md. Extra: {', '.join(extras)}."
         )
+        if mode == "strict":
+            report["errors"].append(msg)
+        else:
+            report["warnings"].append(msg)
 
-    # Read and validate frontmatter
-    content = skill_md.read_text()
-    try:
-        frontmatter, _body = parse_frontmatter(content)
-    except ValueError as e:
-        return False, str(e)
+    # --- name validation ---
+    if 'name' not in frontmatter:
+        name_err = "Missing 'name' in frontmatter"
+        if mode == "strict":
+            report["errors"].append(name_err)
+        else:
+            report["warnings"].append(name_err)
+    elif not isinstance(frontmatter.get('name'), str):
+        name_err = f"Name must be a string, got {type(frontmatter.get('name')).__name__}"
+        if mode == "strict":
+            report["errors"].append(name_err)
+        else:
+            report["warnings"].append(name_err)
+    else:
+        name = frontmatter.get('name', '').strip()
+        if not name:
+            name_err = "Name is empty or whitespace-only."
+            if mode == "strict":
+                report["errors"].append(name_err)
+            else:
+                report["warnings"].append(name_err)
+        else:
+            violation = name_violation(name)
+            if violation:
+                if mode == "strict":
+                    report["errors"].append(violation)
+                else:
+                    report["warnings"].append(violation)
 
-    # Reject the em dash (U+2014) anywhere in the file: a skill-maker authoring rule
-    # (see SKILL.md's body-writing guidance), enforced the same way as the angle-bracket
-    # hardening check below since it likewise admits no exception.
+            # Name must match the parent directory name (spec requirement)
+            dir_name = skill_path.name
+            if dir_name and unicodedata.normalize('NFKC', name) != unicodedata.normalize('NFKC', dir_name):
+                msg = f"Name '{name}' must match the parent directory name '{dir_name}'. Rename the directory or the 'name' field so they are identical."
+                if mode == "strict":
+                    report["errors"].append(msg)
+                else:
+                    report["warnings"].append(msg)
+
+    # --- description validation ---
+    if 'description' not in frontmatter:
+        report["errors"].append("Missing 'description' in frontmatter")
+    elif not isinstance(frontmatter.get('description'), str):
+        report["errors"].append(f"Description must be a string, got {type(frontmatter.get('description')).__name__}")
+    else:
+        description = frontmatter.get('description', '').strip()
+        if not description:
+            report["errors"].append("Description must be non-empty.")
+        else:
+            if '<' in description or '>' in description:
+                msg = "Description cannot contain angle brackets (< or >)"
+                if mode == "strict":
+                    report["errors"].append(msg)
+                else:
+                    report["warnings"].append(msg)
+            if len(description) > 1024:
+                report["errors"].append(
+                    f"Description is too long ({len(description)} characters). Maximum is 1024 characters."
+                )
+
+    # --- em dash hardening ---
     if '—' in content:
-        return False, (
-            "SKILL.md cannot contain the em dash character (U+2014) in its "
-            "frontmatter or body. Use a comma, period, colon, or parentheses instead."
-        )
+        msg = "SKILL.md cannot contain the em dash character (U+2014). Use a comma, period, colon, or parentheses instead."
+        if mode == "strict":
+            report["errors"].append(msg)
+        else:
+            report["warnings"].append(msg)
 
-    # Check for unexpected properties (excluding nested keys under metadata)
+    # --- unexpected top-level fields ---
     unexpected_keys = set(frontmatter.keys()) - ALLOWED_PROPERTIES
     if unexpected_keys:
-        return False, (
-            f"Unexpected key(s) in SKILL.md frontmatter: {', '.join(sorted(unexpected_keys))}. "
+        msg = (
+            f"Unexpected key(s) in SKILL.md frontmatter: {', '.join(sorted(map(str, unexpected_keys)))}. "
             f"Allowed properties are: {', '.join(sorted(ALLOWED_PROPERTIES))}. "
             f"Fields outside the standard are spec-conformant but not portable; "
             f"put environment needs in 'compatibility'."
         )
+        if mode == "strict":
+            report["errors"].append(msg)
+        else:
+            report["warnings"].append(msg)
 
-    # Check required fields
-    if 'name' not in frontmatter:
-        return False, "Missing 'name' in frontmatter"
-    if 'description' not in frontmatter:
-        return False, "Missing 'description' in frontmatter"
-
-    # Extract name for validation
-    name = frontmatter.get('name', '')
-    if not isinstance(name, str):
-        return False, f"Name must be a string, got {type(name).__name__}"
-    name = name.strip()
-    if name:
-        violation = name_violation(name)
-        if violation:
-            return False, violation
-        # Name must match the parent directory name (spec requirement)
-        dir_name = skill_path.name
-        if dir_name and unicodedata.normalize('NFKC', name) != unicodedata.normalize('NFKC', dir_name):
-            return False, (
-                f"Name '{name}' must match the parent directory name '{dir_name}'. "
-                f"Rename the directory or the 'name' field so they are identical."
-            )
-
-    # Extract and validate description
-    description = frontmatter.get('description', '')
-    if not isinstance(description, str):
-        return False, f"Description must be a string, got {type(description).__name__}"
-    description = description.strip()
-    if not description:
-        return False, "Description must be non-empty."
-    # Reject angle brackets as a skill-maker hardening measure: the spec is
-    # silent on them and the reference validator does not check them.
-    if '<' in description or '>' in description:
-        return False, "Description cannot contain angle brackets (< or >)"
-    # Check description length (max 1024 characters per spec)
-    if len(description) > 1024:
-        return False, f"Description is too long ({len(description)} characters). Maximum is 1024 characters."
-
-    # Validate optional scalar fields and metadata according to the portable schema.
+    # --- optional-field type/length violations ---
     if 'license' in frontmatter and not isinstance(frontmatter.get('license'), str):
-        return False, f"License must be a string, got {type(frontmatter.get('license')).__name__}"
+        msg = f"License must be a string, got {type(frontmatter.get('license')).__name__}"
+        if mode == "strict":
+            report["errors"].append(msg)
+        else:
+            report["warnings"].append(msg)
+
     if 'allowed-tools' in frontmatter and not isinstance(frontmatter.get('allowed-tools'), str):
-        return False, f"Allowed tools must be a string, got {type(frontmatter.get('allowed-tools')).__name__}"
+        msg = f"Allowed tools must be a string, got {type(frontmatter.get('allowed-tools')).__name__}"
+        if mode == "strict":
+            report["errors"].append(msg)
+        else:
+            report["warnings"].append(msg)
 
     if 'compatibility' in frontmatter:
         compatibility = frontmatter.get('compatibility')
         if not isinstance(compatibility, str):
-            return False, f"Compatibility must be a string, got {type(compatibility).__name__}"
-        if len(compatibility) > 500:
-            return False, f"Compatibility is too long ({len(compatibility)} characters). Maximum is 500 characters."
+            msg = f"Compatibility must be a string, got {type(compatibility).__name__}"
+            if mode == "strict":
+                report["errors"].append(msg)
+            else:
+                report["warnings"].append(msg)
+        elif len(compatibility) > 500:
+            msg = f"Compatibility is too long ({len(compatibility)} characters). Maximum is 500 characters."
+            if mode == "strict":
+                report["errors"].append(msg)
+            else:
+                report["warnings"].append(msg)
 
     if 'metadata' in frontmatter:
         metadata = frontmatter.get('metadata')
         if not isinstance(metadata, dict):
-            return False, f"Metadata must be a mapping, got {type(metadata).__name__}"
-        if not all(isinstance(key, str) for key in metadata):
-            return False, "Metadata keys must be strings"
-        if not all(isinstance(value, str) for value in metadata.values()):
-            return False, "Metadata values must be strings"
+            msg = f"Metadata must be a mapping, got {type(metadata).__name__}"
+            if mode == "strict":
+                report["errors"].append(msg)
+            else:
+                report["warnings"].append(msg)
+        else:
+            if not all(isinstance(key, str) for key in metadata):
+                msg = "Metadata keys must be strings"
+                if mode == "strict":
+                    report["errors"].append(msg)
+                else:
+                    report["warnings"].append(msg)
+            if not all(isinstance(value, str) for value in metadata.values()):
+                msg = "Metadata values must be strings"
+                if mode == "strict":
+                    report["errors"].append(msg)
+                else:
+                    report["warnings"].append(msg)
+
+    # --- body budget warnings (always warnings) ---
+    lines = body.count('\n') + 1
+    approx_tokens = len(body) // 4
+    body_bytes = len(body.encode('utf-8'))
+    if lines > BODY_LINE_BUDGET:
+        report["warnings"].append(
+            f"SKILL.md body is {lines} lines (recommended under {BODY_LINE_BUDGET}). "
+            f"Move detail into references/ and point to it."
+        )
+    if approx_tokens > BODY_TOKEN_BUDGET:
+        report["warnings"].append(
+            f"SKILL.md body is roughly {approx_tokens} tokens (recommended under "
+            f"{BODY_TOKEN_BUDGET}). Move detail into references/ and point to it."
+        )
+    if body_bytes > BODY_BYTE_BUDGET_CODEX:
+        report["warnings"].append(
+            f"SKILL.md body is {body_bytes} bytes. Codex hard-truncates a selected "
+            f"skill's body at about {BODY_BYTE_BUDGET_CODEX} bytes (~2000 tokens) by "
+            f"default, well under the open standard's own 5000-token recommendation. "
+            f"If you need Codex compatibility, trim well under this."
+        )
+
+    # Description ceiling advisory: within 5% of the 1024 limit is a maintenance trap.
+    desc_val = frontmatter.get('description')
+    desc = desc_val.strip() if isinstance(desc_val, str) else ''
+    if 973 <= len(desc) <= 1024:
+        report["warnings"].append(
+            f"Description is {len(desc)} characters, within 5% of the 1024 limit. "
+            f"The next trigger-phrase edit will breach it; trim now."
+        )
+
+    # Name portability advisory: at least one major client's own authoring
+    # validator accepts only ASCII names, even though the spec and this
+    # validator accept Unicode.
+    name_val = frontmatter.get('name')
+    name = name_val.strip() if isinstance(name_val, str) else ''
+    if name and not name.isascii():
+        report["warnings"].append(
+            f"Name '{name}' contains non-ASCII characters. The spec and this validator "
+            f"accept Unicode names, but at least one major client's own authoring tool "
+            f"requires ASCII-only names and will reject this one. Prefer ASCII for "
+            f"cross-client portability."
+        )
+
+    report["valid"] = len(report["errors"]) == 0
+    return report
 
 
-    return True, "Skill is valid!"
+def validate_skill(skill_path):
+    """Strict validation of a skill. Returns (is_valid, message).
+
+    Wraps inspect_skill(..., mode="strict") for existing callers.
+    Returns the first error message on failure, or (True, "Skill is valid!").
+    """
+    report = inspect_skill(skill_path, mode="strict")
+    if report["valid"]:
+        return True, "Skill is valid!"
+    return False, report["errors"][0]
+
 
 def body_warnings(skill_path):
     """Non-fatal advisories on the SKILL.md body budget. Returns a list of strings."""
@@ -217,7 +354,8 @@ def body_warnings(skill_path):
             f"If you need Codex compatibility, trim well under this."
         )
     # Description ceiling advisory: within 5% of the 1024 limit is a maintenance trap.
-    desc = (frontmatter.get('description') or '').strip()
+    desc_val = frontmatter.get('description')
+    desc = desc_val.strip() if isinstance(desc_val, str) else ''
     if 973 <= len(desc) <= 1024:
         warnings.append(
             f"Description is {len(desc)} characters, within 5% of the 1024 limit. "
@@ -226,7 +364,8 @@ def body_warnings(skill_path):
     # Name portability advisory: at least one major client's own authoring
     # validator accepts only ASCII names, even though the spec and this
     # validator accept Unicode.
-    name = (frontmatter.get('name') or '').strip()
+    name_val = frontmatter.get('name')
+    name = name_val.strip() if isinstance(name_val, str) else ''
     if name and not name.isascii():
         warnings.append(
             f"Name '{name}' contains non-ASCII characters. The spec and this validator "
@@ -237,17 +376,42 @@ def body_warnings(skill_path):
     return warnings
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python -m scripts.quick_validate <skill_directory>")
-        sys.exit(1)
+def _format_report(report, skill_arg, json_output):
+    """Print report and return exit code."""
+    if json_output:
+        print(json.dumps(report))
+        return 0 if report["valid"] else 1
 
-    target = sys.argv[1]
-    valid, message = validate_skill(target)
-    print(message)
-    if valid:
-        for w in body_warnings(target):
-            print(f"  warning: {w}")
-        print("  note: for the reference check, also run: skills-ref validate " + target)
-        print("  note: skills-ref is the standard's reference/demonstration library, not a production SDK")
-    sys.exit(0 if valid else 1)
+    for e in report["errors"]:
+        print(f"  error: {e}")
+    for w in report["warnings"]:
+        print(f"  warning: {w}")
+    if report["valid"]:
+        print("Skill is valid!")
+        if report["mode"] == "strict":
+            print(f"  note: for the reference check, also run: skills-ref validate {skill_arg}")
+            print("  note: skills-ref is the standard's reference/demonstration library, not a production SDK")
+    return 0 if report["valid"] else 1
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="python -m scripts.quick_validate",
+        description="Validate a skill directory (agentskills.io compliance).",
+    )
+    parser.add_argument("skill_directory", help="Path to the skill folder")
+    parser.add_argument(
+        "--mode",
+        choices=["strict", "import"],
+        default="strict",
+        help="Validation mode: strict (portable) or import (compatibility inspection)",
+    )
+    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON report")
+    args = parser.parse_args(argv)
+
+    report = inspect_skill(args.skill_directory, mode=args.mode)
+    sys.exit(_format_report(report, args.skill_directory, args.json))
+
+
+if __name__ == "__main__":
+    main()

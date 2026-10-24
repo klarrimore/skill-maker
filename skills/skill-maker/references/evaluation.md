@@ -144,13 +144,25 @@ adapter. It copies the source into `workspace/candidates/v0/<skill-name>/`. For 
 
 1. runs the current candidate on train and held-out cases;
 2. sends only failed train expectations and cited artifact metadata to `revise`;
-3. stages a fresh `candidates/vN/<skill-name>/` copy under the workspace;
-4. validates and audits the candidate before running it;
-5. evaluates valid candidates against the same baseline and held-out cases;
-6. promotes only a strict winner by this ordered score: held-out objective pass rate, calibrated
+3. creates a system temporary directory outside the evaluator workspace as an isolated staging
+   root, copies only the portable candidate into it, and provides the adapter with paths inside
+   this isolated root. Workspace markers (grading.json, history.json, benchmark.json, evals/,
+   tests/) are unreachable by walking ancestors from the provided paths. If the temporary
+   directory resolves inside the workspace (e.g. via TMPDIR pointing there), the operation fails
+   as a configuration error rather than silently falling back to persistent workspace paths.
+4. after a successful revision, copies the isolated candidate into
+   `workspace/candidates/vN/<skill-name>/`, attaches the source-controlled `evals/` tree, then
+   validates and audits the candidate before running it;
+5. promotes only a strict winner by this ordered score: held-out objective pass rate, calibrated
    judge pass rate, lower mean tokens, then lower mean duration. Ties retain the incumbent;
+6. persists a sanitized revision request with `$ISOLATED/...` path placeholders instead of live
+   temporary or persistent filesystem paths;
 7. records parentage, scores, validation, audit, and `grading_result` (`baseline`, `won`, `lost`,
    `tie`, or `invalid`) in `history.json`.
+
+The temporary staging prevents an adapter from discovering the workspace by walking ancestors.
+This is not an OS-level security sandbox; a determined adapter that independently scans arbitrary
+filesystem roots is not blocked by this isolation layer.
 
 The final artifact is copied to `workspace/best-skill/<skill-name>/` so its frontmatter name and
 parent directory remain valid. It is revalidated before returning. Promotion does not install,

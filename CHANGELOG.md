@@ -1,4 +1,66 @@
 # Changelog - skill-maker
+## [1.12.0] - 2026-10-25
+
+### Added
+
+- Added `resource.unaddressed` depth-2 guard so nested references get `resource.reference-depth` only, not also `resource.unaddressed`.
+- Added `resource.reference-depth` boundary note to `Project_Architecture_Blueprint.md` and `evals/README.md` qualifying that depth warnings apply only to `references/` subdirectories, not assets.
+- Added doc-sync phase: CHANGELOG v1.11 entry, `evals/README.md` audit section and import-mode examples, `Project_Architecture_Blueprint.md` §6.3/§6.6/§8.5 updates for strict/import split and revision isolation, `spec-provenance.md` validation-mode authority-tier section.
+
+### Changed
+
+- Bumped skill-maker to v1.12.
+
+[1.12.0]: https://github.com/klarrimore/skill-maker/compare/v1.11...v1.12
+
+## [1.11.0] - 2026-10-25
+
+### Added
+
+- Added `inspect_skill(skill_path, mode)` — the shared diagnostic engine behind `validate_skill`, with `strict` mode (portable delivery default) and `import` mode (read-only compatibility inspection).
+- Added `argparse` CLI to `quick_validate.py`: `--mode strict|import` and `--json` flags. Exit codes: 0 valid, 1 diagnostic errors, 2 usage/invalid-mode error.
+- Added empty/whitespace-only name rejection to strict validation (previously validated silently, now a strict error).
+- Added invalid-mode guard at the `inspect_skill` API entry with a clear error report.
+- Added portable-resource audit warnings to `skill_eval audit`:
+  - `skill.allowed-tools`: experimental pre-approval field present in frontmatter.
+  - `resource.unaddressed.<path>`: packaged reference/asset not named in SKILL.md body (direct resources only; nested files flagged separately).
+  - `resource.reference-depth.<path>`: file below `references/<subdirectory>/`.
+  - `script.unlisted.<path>`: bundled script not named in SKILL.md body (full skill-relative path required).
+- Added isolated temporary staging for revision requests in `improve_skill`, with `resolve()`-based containment guard against the workspace tree.
+- Added sanitized `$ISOLATED/...` path placeholders in stored revision `request.json`.
+- Added ancestor-traversal leakage detection to the fake eval adapter.
+- Added 14 regression tests covering invalid mode, numeric frontmatter keys, same-basename script/resource masking, nested asset restrictions, symlinked temp root containment, `allowed-tools` empty-value warning, and existing improve/promotion/sanitization contracts.
+- Added `quick_validate` exit-code documentation to `scripts/README.md`.
+
+### Changed
+
+- Split `quick_validate.py`'s monolithic `validate_skill` into `inspect_skill()` with mode branching, preserving the `validate_skill(skill_path) -> (bool, message)` contract for existing callers (`package_skill.py`, `install_skill.py`, `skill_eval.py`).
+- Replaced persistent `workspace/iterations/vN/revision/source/` with a `tempfile.TemporaryDirectory` outside the workspace, created and cleaned up per iteration via `with` block.
+- Moved candidate existence/copy errors into a single OSError handler (was two-stage with a separate `isdir`/`iterdir` check).
+- `resource.unaddressed` now only fires for direct `references/` and `assets/` children (depth == 2), not for nested files.
+- `skill.allowed-tools` audit warning fires on frontmatter presence regardless of value.
+- Restructured `SKILL.md` core loop into a branching design (create/update/improve) with a shared foundation, explicit import-then-deliver validation, and direct conditional resource pointers.
+- Consolidated `references/authoring-guide.md` — added portable core section, conversion workflow, first-sentence routing signal, near-miss boundaries, default omission guidance, and deduplicated overlapping Do/Don't items.
+- Aligned `references/description-optimization.md` with the evaluation contract: ~20 balanced queries, near-misses, three repetitions, fixed held-out selection, fresh sanity queries after edits.
+- Updated `references/evaluation.md` with isolated staging documentation, contained-path failure mode, and sanitized request persistence.
+- Added revision isolation section to `references/environment-adaptations.md`.
+- Added bundled-script inspection checklist to `references/scripts.md`.
+- Added strict-versus-import validation section to `references/spec-reference.md`, plus ASCII-name default emphasis and adapter-concerns note for host extensions.
+- Updated `README.md` with import mode examples, audit warning descriptions, and correct temporary-staging language for improvement.
+- Updated `references/schemas.md` with the sanitized `request.json (revise operation)` schema.
+- Bumped skill-maker to v1.11.
+- Removed em dash (U+2014) from `SKILL.md` body.
+
+### Fixed
+
+- Fixed `_audit_skill` to capture SKILL.md body text directly (was discarding body by calling `_frontmatter` only).
+- Fixed `body_warnings` and `inspect_skill` description/name advisory to guard against non-string values (was calling `.strip()` on integers and YAML types).
+- Fixed `_format_report` duplicate `main()` function definition.
+- Fixed same-basename resource masking: `resource.unaddressed` now requires the full skill-relative path in body, not just the basename.
+- Fixed `_audit_skill` to use `len(parts) == 2` guard so nested references get `resource.reference-depth` only, not also `resource.unaddressed`.
+- Added `NotADirectoryError` to the candidate-copy exception handler in `improve_skill`.
+
+
 ## [1.10.0] - 2026-09-30
 
 ### Added
@@ -220,10 +282,16 @@
 
 - Removed an installed skill that was checked in by mistake.
 
+
+
+
+
 [1.10.0]: https://github.com/klarrimore/skill-maker/compare/v1.9...v1.10
-[1.9.0]: https://github.com/klarrimore/skill-maker/compare/v1.8...v1.9
 [1.8.0]: https://github.com/klarrimore/skill-maker/compare/v1.7...v1.8
 [1.7.0]: https://github.com/klarrimore/skill-maker/compare/v1.6...v1.7
 [1.6.0]: https://github.com/klarrimore/skill-maker/compare/v1.5...v1.6
 [1.5.0]: https://github.com/klarrimore/skill-maker/compare/v1.4...v1.5
 [1.4.0]: https://github.com/klarrimore/skill-maker/compare/v1.3...v1.4
+
+[1.11.0]: https://github.com/klarrimore/skill-maker/compare/v1.10...v1.11
+[1.9.0]: https://github.com/klarrimore/skill-maker/compare/v1.8...v1.9

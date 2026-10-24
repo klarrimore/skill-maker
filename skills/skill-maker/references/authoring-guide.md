@@ -45,6 +45,9 @@ Practical rules:
 - Keep `SKILL.md` under 500 lines and roughly 5000 tokens. Approaching the limit signals you
   should add a layer of hierarchy: move detail into a reference file, leave a clear pointer.
 - Reference files clearly from `SKILL.md`; say when to read each one, not just that it exists.
+  A pointer that names the full skill-relative path (e.g. `references/guide.md`) satisfies the
+  audit check; a bare filename does not if a file in a different directory shares the same
+  basename.
 - For a large reference file (over ~300 lines), add a table of contents at the top.
 - When a skill spans multiple variants (frameworks, clouds, domains), organize by variant so
   the agent reads only the relevant file:
@@ -97,6 +100,76 @@ Write the skill to be general, not welded to the examples you tested on. A skill
 times across many prompts; if it only works on your three test cases, it is useless. Draft it,
 then reread with fresh eyes and cut.
 
+## The portable core
+
+Agent-agnostic output uses only the six portable frontmatter fields (`name`, `description`,
+`license`, `allowed-tools`, `metadata`, `compatibility`). Omit `allowed-tools` by default;
+pre-approval is client-specific and requires explicit trust review.
+
+Client-specific fields (`context: fork`, `user-invocable`, `model`, platform-specific policy
+files) are spec-conformant extensions that lock the skill to the clients that read them. Keep
+them out of the portable core. If you need one, document it in `compatibility` so users are
+not surprised.
+
+The `description` first sentence is the routing signal an agent uses to weigh the skill.
+Lead with the primary action the skill performs. Push trigger keywords into the second sentence
+so a short first sentence already communicates the function.
+
+## Converting an existing client-specific skill
+
+1. **Inspect** the existing skill with import mode to see what client extensions it carries
+   without rejecting it:
+   ```bash
+   python -m scripts.quick_validate <skill> --mode import --json
+   ```
+   Import mode reports unknown fields, name mismatches, angle brackets, em dashes, and
+   optional-field violations as warnings, not errors.
+2. **Decide** whether to convert to portable or leave it client-specific. Conversion means
+   removing or relocating client extensions into `compatibility` and resolving all warnings.
+3. When converting, **copy** the skill, resolve warnings explicitly, and pass strict validation.
+   Never let import-mode validity authorize packaging or installation.
+4. When preserving an existing client extension, **keep** the extension documented in
+   `compatibility` and accept that the skill is not portable to other clients.
+
+## First-sentence routing signal
+
+The first sentence of `description` is the primary signal an agent uses to decide whether to
+activate the skill. Make the first sentence state the action and the domain:
+
+- Good: "Extracts text and tables from PDF files. Use when working with PDF documents, forms,
+  or document extraction."
+- Poor: "A skill for working with PDFs that helps you extract data." (the action is buried)
+- Poor: "Helps with PDFs." (no action)
+
+The first ~30 characters carry the most weight. Lead with the verb and the object.
+
+## Near-miss boundaries
+
+Add near-miss negative trigger queries that share domain vocabulary with the skill but should
+not trigger it. This prevents false positives from conceptually adjacent tasks. For example,
+a PDF extraction skill should have a negative query like "create a PDF" (creation, not
+extraction) or "sign this document" (signing, not extraction). The audit checks that negative
+queries share recognizable terms with the description.
+
+## Default omission of `allowed-tools`
+
+The `allowed-tools` field is experimental; support varies by agent. The portable core omits it
+by default. If a target adapter requires it, add it only after reviewing the tool list against
+the skill's real needs. The offline audit warns when `allowed-tools` is present.
+
+## Format validation is not a safety review
+
+The bundled validator checks format constraints (frontmatter, field types, name rules, body
+budgets). It does not inspect whether the skill's behavior matches its description, ships
+malware, or exfiltrates data. A passing strict validation means the skill is portable-spec
+conformant, not that it is safe. Inspect third-party skills before installing.
+
+## Always-on instructions remain separate
+
+A skill with no discrete trigger should be an always-on instruction file (e.g. AGENTS.md), not
+a skill. If the honest description would be "use this on every task," it is not a skill. Do not
+ship miscategorized content as a skill.
+
 ## Do's and Don'ts
 
 These consolidate the standard's authoring guidance and the most common failure modes.
@@ -117,7 +190,8 @@ These consolidate the standard's authoring guidance and the most common failure 
   documentation.
 - Keep `SKILL.md` under 500 lines and roughly 5000 tokens; move detail into `references/`.
 - Tell the agent when to load each reference file (for example, "Read references/api-errors.md
-  if the API returns a non-200 status"), not a generic "see references/".
+  if the API returns a non-200 status"), not a generic "see references/". Name the full
+  skill-relative path, not just the filename.
 - Match specificity to fragility. Give freedom where multiple approaches are valid, and explain
   why; be prescriptive where operations are fragile or need a specific sequence.
 - Provide defaults, not menus. Pick a default tool or approach; mention alternatives briefly.
@@ -132,10 +206,6 @@ These consolidate the standard's authoring guidance and the most common failure 
   plan-validate-execute for batch or destructive operations.
 - Bundle a tested script in `scripts/` when traces show the agent reinventing the same logic
   each run.
-- Write the description imperatively, focused on user intent, pushy, concise (aim for 256
-  characters or fewer, treat 512 as the working ceiling, 1024 as the hard limit), including
-  contexts where the user does not name the domain.
-- Make the `name` kebab-case and match the parent directory name exactly.
 - Design scripts for non-interactive use, with helpful errors and structured output. See
   `references/scripts.md` for the full rules on dependencies, idempotency, `--dry-run`, exit
   codes, and output size.
@@ -143,6 +213,8 @@ These consolidate the standard's authoring guidance and the most common failure 
   distributing.
 - Test triggering with eval queries, run each several times, and use a train/validation split
   to avoid overfitting.
+- Keep references one level deep from `SKILL.md`. The offline audit warns when packaged files
+  sit below `references/<subdirectory>/…`.
 
 ### Don't
 

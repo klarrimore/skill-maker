@@ -108,6 +108,18 @@ class TestInstallSkill(unittest.TestCase):
             install_skill(skill, target=self.target)
         self.assertEqual(ctx.exception.code, EXIT_USAGE)
 
+    def test_refuses_import_only_artifact(self):
+        """A skill valid only in import mode (client extension) must not install."""
+        skill = self.tmp_path / "client-ext"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text(
+            "---\nname: client-ext\ndescription: Has client extension\ncontext: fork\n---\nBody.\n"
+        )
+        with self.assertRaises(InstallError) as ctx:
+            install_skill(skill, target=self.target)
+        self.assertEqual(ctx.exception.code, EXIT_USAGE)
+        self.assertFalse(self.target.exists())
+
     def test_refuses_missing_skill_md(self):
         skill = self.tmp_path / "empty"
         skill.mkdir()

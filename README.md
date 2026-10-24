@@ -24,7 +24,7 @@ skill or replace it with a path to another skill, such as `../my-skill`.
 ### 1. Validate the skill
 
 Run the reference validator when it is installed, then run the zero-network bundled
-validator:
+validator. Strict mode (default) is required for packaging and installation:
 
 ```bash
 cd skills/skill-maker
@@ -34,14 +34,25 @@ fi
 python3 -m scripts.quick_validate .
 ```
 
-Fix validation errors before packaging or evaluation. Body-size and portability
-warnings are reported separately so you can make an explicit tradeoff.
+Use import mode for read-only compatibility inspection of an existing client-specific
+skill before deciding whether to convert:
+
+```bash
+python3 -m scripts.quick_validate ../existing-skill --mode import --json
+```
+
+Import mode reports client extensions and name mismatches as warnings, not errors.
+A skill must pass strict mode to be packaged or installed.
 
 ### 2. Audit the evaluation contract
 
 The audit is offline. It validates the skill, typed eval and trigger schemas, fixture
 paths, train/held-out coverage, failure-mode mappings, judge calibration, and safety
-boundaries:
+boundaries. Portable-resource warnings flag:
+- `skill.allowed-tools` when the frontmatter contains this experimental pre-approval field.
+- `resource.unaddressed.<path>` when a packaged reference or asset is not named in the body.
+- `resource.reference-depth.<path>` when a file sits below `references/<subdir>/`.
+- `script.unlisted.<path>` when a bundled script is not named in the body.
 
 ```bash
 python3 -m scripts.skill_eval audit . --workspace /tmp/skill-maker-audit
@@ -100,7 +111,8 @@ repetitions, duplicate records, and mixed protocols. Use `--eval-id`, `--split`,
 ### 6. Improve in a sandbox
 
 Improvement requires both train and held-out cases plus an explicit adapter. Candidates
-are revised, validated, evaluated, and promoted only inside the workspace:
+are revised in an isolated temporary staging directory, then copied into the workspace
+for validation, evaluation, and promotion:
 
 ```bash
 python3 -m scripts.skill_eval improve . \
@@ -113,8 +125,10 @@ python3 -m scripts.skill_eval improve . \
 
 Inspect `history.json` and `best-skill/` before applying any result. The source skill
 is never overwritten. Revision requests receive train failure evidence only; held-out
-prompts, labels, results, and scores remain unavailable. Missing token or duration
-metrics remain unavailable rather than being treated as zero.
+prompts, labels, results, and scores remain unavailable. Revision adapters receive
+paths inside a temporary staging directory outside the workspace; the stored request
+persists sanitized `$ISOLATED/...` path placeholders rather than live filesystem paths.
+This is not an OS security sandbox.
 
 ### 7. Package and install
 

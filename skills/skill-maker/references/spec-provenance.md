@@ -139,3 +139,23 @@ When the standard and a validator differ, name the one you follow. Say "the spec
 only for text in `docs/specification.mdx`. Say "for portability" for cross-client
 guidance. Say "our validator hardens this" for the bundled checks. Never let a validator's
 behavior pass as a spec requirement.
+
+## Validation mode as an authority-tier indicator
+
+The bundled validator's two modes correspond to different conformance bars:
+
+- **Strict mode** enforces spec constraints (required fields, lengths, name format including
+  directory-name matching), portability rules (the six-field allow-list, non-empty name,
+  bracket-free description), and hardening checks (angle brackets, em dash, non-ASCII name
+  warning). A skill that passes strict mode is both spec-conformant and portable.
+- **Import mode** is a read-only inspection threshold, not a conformance assertion. It checks
+  only that SKILL.md exists, YAML parses, and `description` is present and non-empty. It does
+  not enforce name validity, field types, bracket hardening, em-dash rejection, or the
+  allow-list. A skill that passes import mode may still violate spec constraints (missing or
+  invalid name, bad field types) and portability rules (client extensions, name mismatches).
+- The two modes therefore do **not** map one-to-one onto the authority tiers. Import mode is a
+  triage tool: it tells you whether a skill is worth inspecting before conversion, not whether
+  it is spec-conformant or portable. Strict mode and spec-conformance are closely aligned but
+  not identical: the bundled validator is stricter than the spec (it adds hardening checks and
+  the portability allow-list). Use strict-mode validity as evidence of spec plus portability,
+  not of spec alone.

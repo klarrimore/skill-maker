@@ -35,8 +35,14 @@ google-chrome --headless --disable-gpu --window-size=1200,1600 \
 All must run **from `skills/skill-maker/`, as modules** (see Gotchas):
 
 ```bash
-python3 -m scripts.quick_validate .                    # validate (exit 0 = valid)
-python3 -m scripts.quick_validate evals/files/broken-skill  # expect exit 1
+python3 -m scripts.quick_validate .                              # strict mode (exit 0 = valid, 1 = errors)
+python3 -m scripts.quick_validate evals/files/broken-skill       # expect exit 1
+python3 -m scripts.quick_validate ../client-skill --mode import  # import mode (exit 0 = inspectable, 1 = errors)
+python3 -m scripts.quick_validate . --mode import                # import mode on a valid skill
+python3 -m scripts.quick_validate . --json                       # JSON report (strict)
+python3 -m scripts.quick_validate . --mode import --json         # JSON report (import)
+# Exit codes for quick_validate: 0 = valid for mode, 1 = diagnostic errors,
+# 2 = usage or invalid-mode error.
 python3 -m scripts.skill_eval audit . --workspace /tmp/skill-audit
 python3 -m scripts.skill_eval run . --workspace /tmp/skill-run \
   --adapter-arg python3 --adapter-arg /path/to/skill-eval-adapter.py
@@ -61,9 +67,10 @@ fm, body = parse_frontmatter(open('SKILL.md').read())
 print(fm['name'], '| body lines:', body.count('\n'))
 "
 python3 -c "
-from scripts.quick_validate import validate_skill, body_warnings
+from scripts.quick_validate import inspect_skill, validate_skill, body_warnings
 print(validate_skill('.'))          # (True, 'Skill is valid!')
 print(body_warnings('.'))           # [] when under budget
+print(inspect_skill('.', mode='import'))  # import-mode report dict
 "
 python3 -c "
 from pathlib import Path
