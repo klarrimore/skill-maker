@@ -14,7 +14,8 @@
 - Documented `skill-optimization.md` in `README.md` further-reading list.
 
 [1.13.0]: https://github.com/klarrimore/skill-maker/compare/v1.12...v1.13
-[1.12.0]: https://github.com/klarrimore/skill-maker/compare/v1.11...v1.12
+
+## [1.12.0] - 2026-10-25
 
 ### Added
 
