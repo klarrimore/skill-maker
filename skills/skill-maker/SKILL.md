@@ -6,7 +6,7 @@ compatibility: Portable across any skills-compatible agent that reads the agents
 metadata:
   author: klarrimore
   standard: agentskills.io
-  version: "1.12"
+  version: "1.13"
 ---
 
 # Skill Maker
@@ -50,7 +50,9 @@ The core loop branches by task. Each path starts with the same foundation:
   `__SKILL_NAME_PLACEHOLDER__`, and `__SKILL_DESCRIPTION_PLACEHOLDER__`
   with real data before opening).
 - **Establish or preserve** task and trigger baselines before edits. Read
-  `references/evaluation.md` and `references/description-optimization.md`.
+  `references/evaluation.md` and `references/description-optimization.md`. Read
+  `references/skill-optimization.md` when diagnosing task quality, context cost, or tool
+  efficiency, or when choosing among optimization experiments.
 - **Make the smallest justified change** to a writable copy; never modify source
   fixtures or an installed read-only directory.
 - **Run paired evidence** (with-skill vs baseline), then select by held-out
@@ -150,6 +152,8 @@ exit codes, benchmark diagnostics, and manual fallback. Read
 - `references/evaluation.md`: audit, run, benchmark, improve, and manual workflows.
 - `references/schemas.md`: versioned eval, grading, benchmark, and history contracts.
 - `references/description-optimization.md`: trigger-query design and selection.
+- `references/skill-optimization.md`: post-activation optimization playbook for task quality,
+  context cost, and tool efficiency.
 - `references/environment-adaptations.md`: no-adapter, no-display, and packaging fallbacks.
 - `scripts/quick_validate.py`: zero-network validator with `--mode strict|import` and `--json`.
 - `scripts/eval_models.py`: strict eval, trigger, and calibration loaders.

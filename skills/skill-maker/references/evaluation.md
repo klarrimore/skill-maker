@@ -139,6 +139,11 @@ not exposed through the revision source path.
 
 ## Sandboxed improvement
 
+The optimization playbook (`references/skill-optimization.md`) supplies candidate hypotheses;
+this file remains authoritative for execution, isolation, and promotion. The `improve` loop
+below remains sequential and does not itself implement population search, model routing, or
+multi-agent critique.
+
 `improve` requires a clean audit, at least one train case, at least one held-out case, and an
 adapter. It copies the source into `workspace/candidates/v0/<skill-name>/`. For each iteration it:
 

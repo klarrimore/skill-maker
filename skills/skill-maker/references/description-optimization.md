@@ -4,6 +4,9 @@ The `description` field is the primary mechanism an agent uses to decide whether
 skill. Tune it with realistic queries, balanced near misses, repeated trigger measurements,
 and held-out selection. The evaluator keeps this loop separate from ordinary task evals.
 
+This file covers activation only. For post-activation execution quality and efficiency, read
+`references/skill-optimization.md`.
+
 ## Build the query set
 
 Store about 20 balanced positive and negative records in `evals/trigger_queries.json`:

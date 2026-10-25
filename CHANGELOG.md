@@ -1,5 +1,20 @@
 # Changelog - skill-maker
-## [1.12.0] - 2026-10-25
+## [1.13.0] - 2026-10-25
+
+### Added
+
+- Added `references/skill-optimization.md`, a conditional optimization playbook: ground rules, a 12-technique decision table (routing, context engineering, example selection, trace-driven distillation, deterministic offloading, decomposition, critique, candidate diversity, adaptive effort, cost shaping, robustness), safety/trust boundaries, a hypothetical worked experiment, and an experiment-report template.
+- Added post-activation scope boundary to `description-optimization.md` pointing to the playbook for execution quality and efficiency.
+
+### Changed
+
+- Bumped skill-maker to v1.13.
+- Extended `SKILL.md` improvement workflow with a conditional pointer to `references/skill-optimization.md` for diagnosing task quality, context cost, or tool efficiency, and a `## Bundled resources` entry.
+- Added playbook pointer to `evaluation.md` before `## Sandboxed improvement`, stating the playbook supplies candidate hypotheses while `evaluation.md` remains authoritative for execution, isolation, and promotion, and that `improve` remains sequential (no population search, model routing, or multi-agent critique).
+- Documented `skill-optimization.md` in `README.md` further-reading list.
+
+[1.13.0]: https://github.com/klarrimore/skill-maker/compare/v1.12...v1.13
+[1.12.0]: https://github.com/klarrimore/skill-maker/compare/v1.11...v1.12
 
 ### Added
 

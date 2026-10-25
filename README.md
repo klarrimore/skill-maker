@@ -207,6 +207,8 @@ when a headless Chrome or Chromium executable is available.
   and progressive-disclosure guidance.
 - [`description-optimization.md`](skills/skill-maker/references/description-optimization.md):
   trigger-query design and selection.
+- [`skill-optimization.md`](skills/skill-maker/references/skill-optimization.md):
+  post-activation optimization playbook for task quality, context cost, and tool efficiency.
 - [`scripts/README.md`](scripts/README.md): repository smoke and development commands.
 - [`Project_Architecture_Blueprint.md`](Project_Architecture_Blueprint.md): repository
   architecture reference.
