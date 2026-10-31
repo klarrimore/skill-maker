@@ -1,4 +1,16 @@
 # Changelog - skill-maker
+## [1.15.0] - 2026-10-31
+
+### Changed
+
+- Bumped skill-maker to v1.15.
+
+### Fixed
+
+- Removed the unused `Iterable` import and the unused `eval_path` variable from `scripts/skill_eval.py`.
+
+[1.15.0]: https://github.com/klarrimore/skill-maker/compare/v1.14...v1.15
+
 ## [1.14.0] - 2026-10-31
 
 ### Added
