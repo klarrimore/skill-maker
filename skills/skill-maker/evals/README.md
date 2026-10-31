@@ -55,6 +55,11 @@ spec violations:
 - `resource.reference-depth.<path>` — file sits below `references/<subdir>/` instead of
   directly under `references/`.
 - `script.unlisted.<path>` — a bundled script under `scripts/` is not named in the body.
+- `resource.dead-pointer.<source>:<path>` — `SKILL.md` or a reference names a `scripts/`,
+  `references/`, or `assets/` path that does not exist (lines marked "e.g." or "for example"
+  are treated as illustrations and skipped).
+- `resource.missing-toc.<path>` — a long reference under `references/` has no "Contents"
+  heading near the top (the authoring guide owns the threshold).
 
 Add explicit one-line purpose pointers to clear resource/script findings.
 

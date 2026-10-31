@@ -31,8 +31,8 @@ knows exist. The offline audit (`skill_eval audit`) warns about packaged scripts
 the body; the audit requires the full skill-relative path (e.g. `scripts/run.py`), not just
 a basename that could match a file in a different directory. It also warns when `SKILL.md`
 or a reference names a `scripts/`, `references/`, or `assets/` path that does not exist
-(lines marked "e.g." or "for example" count as illustrations), and when a reference over 300
-lines has no "Contents" heading in its first 40 lines.
+(lines marked "e.g." or "for example" count as illustrations), and enforces the large-reference
+table-of-contents rule in `references/authoring-guide.md`.
 
 ```bash
 python -m scripts.quick_validate ./your-skill

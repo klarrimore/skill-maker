@@ -18,7 +18,7 @@ The skill's own references are the authority on authoring; reach for them instea
 - `skills/skill-maker/references/scripts.md` — before writing a bundled script: one-off commands, self-contained dependencies, and agent-friendly design.
 - `skills/skill-maker/references/description-optimization.md` — when tuning the `description` for triggering: the eval-driven method.
 
-In `skills/skill-maker/SKILL.md` and `references/`, punctuate asides with a comma, colon, or parentheses in place of the em dash (U+2014): the validator rejects it in `SKILL.md`, and `references/` keeps the same style.
+Punctuation in `skills/skill-maker/SKILL.md` and `references/`: follow the em-dash rule in SKILL.md's "Gotchas".
 
 ## Verifying changes
 

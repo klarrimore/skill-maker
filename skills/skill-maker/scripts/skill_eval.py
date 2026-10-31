@@ -82,7 +82,7 @@ _POINTER_RE = re.compile(r"(?<![\w./-])((?:scripts|references|assets)/[A-Za-z0-9
 # Lines that illustrate a hypothetical path rather than point at a bundled file.
 # The marker may wrap from the previous line ("(for" / "example, ..."), so the check
 # runs over the previous line joined to the current one.
-_EXAMPLE_LINE_RE = re.compile(r"\be\.g\.|\bfor\s+example\b", re.IGNORECASE)
+_ILLUSTRATION_MARKER_RE = re.compile(r"\be\.g\.|\bfor\s+example\b", re.IGNORECASE)
 
 
 def _markdown_lines(path: Path, skip_frontmatter: bool) -> List[Tuple[int, str]]:
@@ -96,9 +96,14 @@ def _markdown_lines(path: Path, skip_frontmatter: bool) -> List[Tuple[int, str]]
     return [(number + 1, lines[number]) for number in range(start, len(lines))]
 
 
+def _reference_files(skill_dir: Path) -> List[Path]:
+    """Return the bundled Markdown references under references/, sorted, files only."""
+    return [path for path in sorted((skill_dir / "references").rglob("*.md")) if path.is_file()]
+
+
 def _dead_pointer_findings(skill_dir: Path) -> List[Dict[str, Any]]:
     """Warn when SKILL.md or a bundled reference names a skill-relative path that is missing."""
-    sources = [skill_dir / "SKILL.md"] + sorted((skill_dir / "references").rglob("*.md"))
+    sources = [skill_dir / "SKILL.md"] + _reference_files(skill_dir)
     findings: List[Dict[str, Any]] = []
     seen = set()
     for source in sources:
@@ -108,7 +113,7 @@ def _dead_pointer_findings(skill_dir: Path) -> List[Dict[str, Any]]:
         previous = ""
         for number, line in _markdown_lines(source, skip_frontmatter=source_rel == "SKILL.md"):
             context, previous = previous + " " + line, line
-            if _EXAMPLE_LINE_RE.search(context):
+            if _ILLUSTRATION_MARKER_RE.search(context):
                 continue
             for match in _POINTER_RE.finditer(line):
                 target = match.group(1)
@@ -136,9 +141,7 @@ _TOC_HEADING_RE = re.compile(r"^#{1,6}\s+.*\bcontents\b", re.IGNORECASE)
 def _missing_toc_findings(skill_dir: Path) -> List[Dict[str, Any]]:
     """Warn when a bundled reference is long but has no table of contents near the top."""
     findings: List[Dict[str, Any]] = []
-    for source in sorted((skill_dir / "references").rglob("*.md")):
-        if not source.is_file():
-            continue
+    for source in _reference_files(skill_dir):
         lines = source.read_text(encoding="utf-8").splitlines()
         if len(lines) <= _TOC_LINE_THRESHOLD:
             continue

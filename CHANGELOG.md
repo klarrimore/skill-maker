@@ -1,4 +1,30 @@
 # Changelog - skill-maker
+## [1.14.0] - 2026-10-31
+
+### Added
+
+- Added `resource.dead-pointer.<source>:<path>` and `resource.missing-toc.<path>` warnings to `skill_eval audit`: a `SKILL.md` or reference pointer to a missing `scripts/`, `references/`, or `assets/` path, and a long reference without a "Contents" heading near the top (#5).
+- Added `tests/test_skill_body.py` guarding the `SKILL.md` core-loop structure and the no-unaddressed-resources audit (#10).
+- Added two positive and two near-miss negative trigger queries to `evals/trigger_queries.json` (20 to 24, still balanced) (#7).
+
+### Changed
+
+- Bumped skill-maker to v1.14.
+- Restructured the `SKILL.md` core loop into six shared steps with create/update/improve paths, a "Done when" condition per step, and a Gotchas section; replaced the `## Bundled resources` list with conditional pointers at the point of use (#10).
+- Rewrote the `description` to lead with the action and cover improving output quality and token cost of a skill that already fires (#7).
+- Kept each authoring and evaluation rule in one owning reference (`authoring-guide.md`, `evaluation.md`, `scripts.md`), with pointers elsewhere; folded `spec-reference.md` "Security posture" into a pointer to `authoring-guide.md` (#6).
+- Pruned `references/schemas.md` to the contracts the evaluator uses and added a table of contents (#4).
+- Trimmed repo-level agent docs: replaced the generic doc-update template with a short doc-sync guide, dropped the GFM instructions, and reduced `CLAUDE.md` and `.github/copilot-instructions.md` to pointers to `AGENTS.md` (#8).
+- Reviewed the remaining agent-facing material (judge rubrics, failure modes, spec references); follow-ups filed as #12, #13, #14 (#9).
+- Refactored `skill_eval.py` to share one `_reference_files` helper between the dead-pointer and TOC checks.
+
+### Fixed
+
+- Removed dead pointers and repo-only references from the shipped skill: trigger review points at `assets/eval_review.html`, and the duplicate `spec-reference.md` heading is renamed (#3).
+- Documented the new audit ids in `evals/README.md` and `Project_Architecture_Blueprint.md`, and pointed the doc-sync instructions at the conditional resource pointers in `SKILL.md`.
+
+[1.14.0]: https://github.com/klarrimore/skill-maker/compare/v1.13...v1.14
+
 ## [1.13.0] - 2026-10-25
 
 ### Added

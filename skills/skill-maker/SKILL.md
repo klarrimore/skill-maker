@@ -6,7 +6,7 @@ compatibility: Portable across any skills-compatible agent that reads the agents
 metadata:
   author: klarrimore
   standard: agentskills.io
-  version: "1.13"
+  version: "1.14"
 ---
 
 # Skill Maker

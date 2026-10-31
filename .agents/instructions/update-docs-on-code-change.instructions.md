@@ -11,7 +11,7 @@ A change is done when every doc that describes the changed surface describes it 
 
 Match each changed surface to the docs that track it:
 
-- Added, renamed, or removed file under `skills/skill-maker/references/` or `scripts/`: the `## Bundled resources` list in `skills/skill-maker/SKILL.md`, and the layout or further-reading list in `README.md`. The self-audit flags misses as `resource.unaddressed` and `script.unlisted`: `cd skills/skill-maker && python -m scripts.skill_eval audit . --workspace <tmpdir>`.
+- Added, renamed, or removed file under `skills/skill-maker/references/` or `scripts/`: the conditional resource pointer in `skills/skill-maker/SKILL.md` (the step or rule that says when to read or run it), and the layout or further-reading list in `README.md`. The self-audit flags misses as `resource.unaddressed` and `script.unlisted`: `cd skills/skill-maker && python -m scripts.skill_eval audit . --workspace <tmpdir>`.
 - Script CLI flag, exit code, or invocation: `scripts/README.md`.
 - Validator, eval pipeline, or package/install architecture: the matching section of `Project_Architecture_Blueprint.md`.
 - Eval set, audit check, or eval run mode: `skills/skill-maker/evals/README.md`.

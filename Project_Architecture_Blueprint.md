@@ -396,6 +396,9 @@ and safety boundaries. It emits portable-resource warnings:
   in `SKILL.md` body (direct children only; nested files get a depth warning instead).
 - `resource.reference-depth.<path>` — file below `references/<subdirectory>/` (nested assets are not flagged; only `references/` subdirectories trigger depth warnings).
 - `script.unlisted.<path>` — bundled script under `scripts/` not named in body.
+- `resource.dead-pointer.<source>:<path>` — `SKILL.md` or a reference names a missing
+  `scripts/`, `references/`, or `assets/` path ("e.g." / "for example" lines are skipped).
+- `resource.missing-toc.<path>` — long reference without a "Contents" heading near the top.
 
 **Dependencies:** Reuses the validator, parser, strict eval models, command adapter, and
 workspace evidence store. It never becomes a runtime dependency of validation, packaging,
