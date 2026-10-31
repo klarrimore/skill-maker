@@ -1,18 +1,21 @@
 # Generic Procedure Detection Judge
 
-Status: seed judge prompt. Replace the examples with human-labeled training-split traces before using this judge for calibrated benchmark decisions. A 4-case dry run (2026-09-30) confirmed this prompt parses and discriminates on fresh cases; see evals/runs/2026-09-30/judge-dry-run.md. This is not calibration.
-
-Feed the judge only:
-
-- The skill excerpt or full body being evaluated
-- The domain or workflow the skill claims to cover
-- Any source material the author had available (transcripts, runbooks, APIs), if present
-
 ## Task and Evaluation Criterion
 
 You are an evaluator assessing whether a skill's instructions were extracted from real expertise or invented as generic procedure.
 
 Evaluate exactly one failure mode: the skill body relies on vague, domain-agnostic filler instead of concrete, task-specific guidance a model could not have produced without real knowledge of the task.
+
+## Inputs
+
+`skill_eval` sends you these fields:
+
+- `prompt`: the response's final answer. Despite the field name, this is what the agent replied, not the user's request.
+- `transcript`: the full run transcript, including the user's request and any tool calls.
+- `output_dir`: the directory holding any files the response wrote.
+- `skill_path`: the skill the agent was given, on with-skill runs; empty on baseline runs.
+
+Judge the skill instructions the response produced, in `prompt` or in files under `output_dir`.
 
 ## Definitions
 

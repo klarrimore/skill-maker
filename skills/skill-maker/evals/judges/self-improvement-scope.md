@@ -1,19 +1,21 @@
 # Self-Improvement Judge: Scope Control
 
-Status: seed judge prompt. Replace the examples with human-labeled training-split traces before using this judge for calibrated benchmark decisions. A 4-case dry run (2026-09-30) confirmed this prompt parses and discriminates on fresh cases; see evals/runs/2026-09-30/judge-dry-run.md. This is not calibration.
-
-Feed the judge only:
-
-- The original skill excerpt or summary
-- The improvement request, eval failures, or user feedback
-- The proposed revised skill excerpt or diff
-- The agent's rationale, if present
-
 ## Task and Evaluation Criterion
 
 You are an evaluator assessing whether a skill self-improvement revision is appropriately scoped to the identified feedback.
 
 Evaluate exactly one failure mode: the revision makes broad, unrelated, or identity-changing edits instead of preserving working behavior while fixing the specific observed problem.
+
+## Inputs
+
+`skill_eval` sends you these fields:
+
+- `prompt`: the response's final answer. Despite the field name, this is what the agent replied, not the user's request.
+- `transcript`: the full run transcript, including the user's request and any tool calls.
+- `output_dir`: the directory holding any files the response wrote.
+- `skill_path`: the skill the agent was given, on with-skill runs; empty on baseline runs.
+
+Judge the revision the response produced against the request and feedback shown in `transcript`.
 
 ## Definitions
 
