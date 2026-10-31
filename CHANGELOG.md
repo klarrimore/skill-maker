@@ -1,8 +1,9 @@
 # Changelog - skill-maker
-## [Unreleased]
+## [1.15.0] - 2026-10-31
 
 ### Changed
 
+- Bumped skill-maker to v1.15.
 - Rewrote the five `evals/judges/` rubrics to one structure (task, inputs `skill_eval` actually sends, definitions, critiqued PASS and FAIL examples, critique-first JSON) without maintainer notes or leftover output fragments (#12).
 - Moved validation out of the skip-evals judge into a typed `regex` expectation on the validator's success output, and replaced eval 2's mismatched judge with the same check; both now map to FM-4 (#12).
 - Broadened the overfitting judge to description revisions (FM-7) and replaced its example that quoted a held-out fixture (#12).
@@ -10,6 +11,12 @@
 - Rewrote `evals/failure-modes.md` to open with the catalogue: every "Caught by" cell now names a real expectation, rubric, or script and cites exactly the evals that map to it in `evals.json`, a Status column replaces the dated 2026-09-30 run narrative (now a pointer to the run summary), and "Keeping this current" ends with a done-condition that `tests/test_evals_data.py` checks; evals 1 and 4 gain the validator-success `regex` expectation for FM-4 (#13).
 - Gave each topic shared by `spec-reference.md` and `spec-provenance.md` one owner with a one-line pointer in the other, added a validator-checks-by-tier table that `tests/test_spec_references.py` keeps in step with `quick_validate.py`, and restated edit-history entries and prohibitions as present-tense targets (#14).
 - Cited `grade_artifacts.py` in `evals/failure-modes.md` as the standalone check on a produced skill, dropped the strict-severity column from the `spec-provenance.md` tier table in favour of a pointer to `spec-reference.md`, gave the body-budget rows a spec-recommendation source, pointed `authoring-guide.md` at the import-mode rules instead of restating them, and shared one Markdown table parser across the reference and eval tests (#13, #14).
+
+### Fixed
+
+- Removed the unused `Iterable` import and the unused `eval_path` variable from `scripts/skill_eval.py`.
+
+[1.15.0]: https://github.com/klarrimore/skill-maker/compare/v1.14...v1.15
 
 ## [1.14.0] - 2026-10-31
 
@@ -27,6 +34,7 @@
 - Kept each authoring and evaluation rule in one owning reference (`authoring-guide.md`, `evaluation.md`, `scripts.md`), with pointers elsewhere; folded `spec-reference.md` "Security posture" into a pointer to `authoring-guide.md` (#6).
 - Pruned `references/schemas.md` to the contracts the evaluator uses and added a table of contents (#4).
 - Trimmed repo-level agent docs: replaced the generic doc-update template with a short doc-sync guide, dropped the GFM instructions, and reduced `CLAUDE.md` and `.github/copilot-instructions.md` to pointers to `AGENTS.md` (#8).
+- Refreshed the agent-skills config in `docs/agents/` to current templates: renamed the domain glossary from `CONTEXT.md` to `GLOSSARY.md` and updated the `gh` issue conventions for sub-issues, blockers, closing, and fork safety (#2).
 - Reviewed the remaining agent-facing material (judge rubrics, failure modes, spec references); follow-ups filed as #12, #13, #14 (#9).
 - Refactored `skill_eval.py` to share one `_reference_files` helper between the dead-pointer and TOC checks.
 
