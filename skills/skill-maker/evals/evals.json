@@ -11,7 +11,8 @@
       "files": [],
       "failure_modes": ["FM-1", "FM-2", "FM-3", "FM-4", "FM-5"],
       "expectations": [
-        {"kind": "judge", "rubric": "evals/judges/generic-procedure-detection.md", "result": "pass"}
+        {"kind": "judge", "rubric": "evals/judges/generic-procedure-detection.md", "result": "pass"},
+        {"kind": "regex", "target": "transcript", "pattern": "Skill is valid!"}
       ]
     },
     {
@@ -47,7 +48,8 @@
       "files": ["evals/files/standup-summary/SKILL.md"],
       "failure_modes": ["FM-4", "FM-8", "FM-13", "FM-14"],
       "expectations": [
-        {"kind": "judge", "rubric": "evals/judges/self-improvement-scope.md", "result": "pass"}
+        {"kind": "judge", "rubric": "evals/judges/self-improvement-scope.md", "result": "pass"},
+        {"kind": "regex", "target": "transcript", "pattern": "Skill is valid!"}
       ]
     },
     {
