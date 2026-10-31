@@ -1,4 +1,13 @@
 # Changelog - skill-maker
+## [Unreleased]
+
+### Changed
+
+- Rewrote the five `evals/judges/` rubrics to one structure (task, inputs `skill_eval` actually sends, definitions, critiqued PASS and FAIL examples, critique-first JSON) without maintainer notes or leftover output fragments (#12).
+- Moved validation out of the skip-evals judge into a typed `regex` expectation on the validator's success output, and replaced eval 2's mismatched judge with the same check; both now map to FM-4 (#12).
+- Broadened the overfitting judge to description revisions (FM-7) and replaced its example that quoted a held-out fixture (#12).
+- Stated judge calibration status once, in `evals/README.md`, with a table that `tests/test_evals_data.py` keeps in step with `judge_labels.json` (#12).
+
 ## [1.14.0] - 2026-10-31
 
 ### Added

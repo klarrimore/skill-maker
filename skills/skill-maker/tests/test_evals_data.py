@@ -123,14 +123,18 @@ class TestTriggerQueries(unittest.TestCase):
         self.assertEqual(len(texts), len(set(texts)))
 
 
+def _table_rows(text, first_cell_prefix):
+    """Yield the cells of each three-column Markdown table row whose first cell starts with the prefix."""
+    for line in text.splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0].startswith(first_cell_prefix):
+            yield cells
+
+
 def _caught_by():
     """Map each FM id in failure-modes.md to its 'Caught by' cell."""
-    rows = {}
-    for line in (EVALS_DIR / "failure-modes.md").read_text(encoding="utf-8").splitlines():
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) == 3 and cells[0].startswith("FM-"):
-            rows[cells[0]] = cells[2]
-    return rows
+    text = (EVALS_DIR / "failure-modes.md").read_text(encoding="utf-8")
+    return {cells[0]: cells[2] for cells in _table_rows(text, "FM-")}
 
 
 def _held_out_markers(case):
@@ -189,11 +193,10 @@ class TestJudgeCalibrationStatus(unittest.TestCase):
         readme = (EVALS_DIR / "README.md").read_text(encoding="utf-8")
         section = _sections(readme, "## ").get("Judge calibration")
         self.assertIsNotNone(section, "evals/README.md needs a '## Judge calibration' section")
-        rows = {}
-        for line in section.splitlines():
-            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-            if len(cells) == 3 and cells[0].startswith("`judges/"):
-                rows["evals/" + cells[0].strip("`")] = {"pass": int(cells[1]), "fail": int(cells[2])}
+        rows = {
+            "evals/" + cells[0].strip("`"): {"pass": int(cells[1]), "fail": int(cells[2])}
+            for cells in _table_rows(section, "`judges/")
+        }
         rubrics = {"evals/judges/" + path.name for path in (EVALS_DIR / "judges").glob("*.md")}
         self.assertEqual(set(rows), rubrics)
         for rubric in rubrics:

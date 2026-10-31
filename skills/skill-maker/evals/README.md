@@ -74,8 +74,8 @@ fields. Eval 6 has its own clean fixture so eval 4's metadata cannot contaminate
 ## Judging and evidence
 
 Use deterministic expectations whenever an artifact property can be checked locally. Judge
-expectations are binary and remain advisory until their rubric has held-out human labels. Review
-outputs before rewriting. `audit.json`, `grading.json`, `benchmark.json`, `benchmark.md`,
+expectations are binary; "Judge calibration" below states how far their results can be trusted.
+Review outputs before rewriting. `audit.json`, `grading.json`, `benchmark.json`, `benchmark.md`,
 `trigger_results.json`, `history.json`, and metadata-only `audit.jsonl` make the run reproducible.
 
 ## Judge calibration

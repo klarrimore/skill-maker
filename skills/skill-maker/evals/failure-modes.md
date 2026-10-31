@@ -56,7 +56,7 @@ sessions as they accumulate.
 | FM-1 | Emits platform-locked frontmatter, a client-specific field (`context`, `model`, `user-invocable`, scripts sidecar) instead of the six standard fields | Eval 1 (recognized-fields assertion); `grade_artifacts.py` |
 | FM-2 | Invalid frontmatter: non-lowercase/kebab name, name ≠ directory, or description over 1024 chars (spec violations); plus angle brackets, which the bundled validator rejects as a skill-maker hardening measure (the spec is silent and `skills-ref` does not check them) | Eval 1, Eval 2; `grade_artifacts.py`; `quick_validate` |
 | FM-3 | Bloats `SKILL.md` with depth that belongs in `references/` instead of disclosing it behind a read-this-when pointer | Eval 1 (body-budget assertion) |
-| FM-4 | Skips validation before handoff | Eval 1 (runs validator), Eval 4 (re-validates), Eval 6 (transcript shows a validation run) |
+| FM-4 | Skips validation before handoff | Eval 1 (runs validator), Eval 4 (re-validates), Evals 2 and 6 (transcript shows the validator's success output) |
 | FM-5 | Invents a generic procedure from general knowledge ("handle errors appropriately") instead of extracting real expertise | Eval 1 (task-specific guidance assertion); Judge: `judges/generic-procedure-detection.md` |
 | FM-6 | Writes a description that will not trigger: vague, missing the when-to-use half, not pushy about indirect contexts | Eval 3; trigger set |
 | FM-7 | Overfits the description to the queries it was tuned on (no held-out selection) | Eval 3 (held-out selection assertion); Judge: `judges/self-improvement-overfitting.md` |

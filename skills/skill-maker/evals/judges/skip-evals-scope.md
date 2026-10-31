@@ -8,7 +8,7 @@ Evaluate exactly one failure mode: the response expands the request, either by i
 
 ## Inputs
 
-The evaluator sends you these fields:
+`skill_eval` sends you these fields:
 
 - `prompt`: the response's final answer. Despite the field name, this is what the agent replied, not the user's request.
 - `transcript`: the full run transcript, including the user's request and any tool calls.
