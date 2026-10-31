@@ -9,9 +9,12 @@ import re
 import shutil
 import tempfile
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.quick_validate import inspect_skill
+from scripts.utils import ROOT_EXCLUDE_DIRS
+from tests.markdown_tables import table_header, table_rows
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 REFERENCE = SKILL_ROOT / "references" / "spec-reference.md"
@@ -25,81 +28,97 @@ def _skill(frontmatter="name: s\ndescription: Does a thing.", body="Body.\n"):
     return f"---\n{frontmatter}\n---\n{body}"
 
 
-# Row label -> (expected tier, SKILL.md content or None for no file, emitted message fragment).
-# Tiers follow the ticket: spec text is a spec constraint, the six-field allow-list is
-# portability, and every check neither the spec nor skills-ref requires is hardening.
+@dataclass(frozen=True)
+class Fixture:
+    """A skill directory that makes the validator emit one check.
+
+    `skill_md` is the SKILL.md content, or None to omit the file; `nested` adds a second
+    SKILL.md in a subdirectory.
+    """
+
+    skill_md: str | None = _skill()
+    dir_name: str = "s"
+    nested: bool = False
+
+    def build(self, parent):
+        skill_dir = parent / self.dir_name
+        skill_dir.mkdir()
+        if self.skill_md is not None:
+            (skill_dir / "SKILL.md").write_text(self.skill_md, encoding="utf-8")
+        if self.nested:
+            (skill_dir / "sub").mkdir()
+            (skill_dir / "sub" / "SKILL.md").write_text(_skill(), encoding="utf-8")
+        return skill_dir
+
+
+# Row label -> (expected tier, fixture, emitted message fragment).
+# Text the spec requires is a spec constraint, the six-field allow-list is a portability rule,
+# and every check neither the spec nor skills-ref requires is skill-maker hardening.
 CATALOG = {
-    "`SKILL.md` exists": (SPEC, None, "SKILL.md not found"),
-    "Frontmatter is a YAML mapping": (SPEC, "no frontmatter\n", "frontmatter"),
-    "Exactly one `SKILL.md`": (HARDENING, "EXTRA", "SKILL.md files"),
-    "`name` present and a non-empty string": (SPEC, _skill("description: Does a thing."), "Missing 'name'"),
-    "`name` character set and hyphens": (SPEC, _skill("name: S\ndescription: Does a thing."), "kebab-case"),
-    "`name` at most 64 characters": (SPEC, _skill(f"name: {'s' * 65}\ndescription: Does a thing."), "Maximum is 64"),
-    "`name` matches the directory": (SPEC, _skill("name: t\ndescription: Does a thing."), "parent directory"),
-    "`description` present and a non-empty string": (SPEC, _skill("name: s"), "Missing 'description'"),
-    "`description` at most 1024 characters": (SPEC, _skill(f"name: s\ndescription: {'d' * 1025}"), "Maximum is 1024"),
-    "`license` is a string": (SPEC, _skill("name: s\ndescription: Does a thing.\nlicense: 1"), "License must be"),
-    "`allowed-tools` is a string": (SPEC, _skill("name: s\ndescription: Does a thing.\nallowed-tools: [a]"), "Allowed tools must be"),
-    "`compatibility` a string of at most 500 characters": (SPEC, _skill(f"name: s\ndescription: Does a thing.\ncompatibility: {'c' * 501}"), "Maximum is 500"),
-    "`metadata` maps strings to strings": (SPEC, _skill("name: s\ndescription: Does a thing.\nmetadata:\n  k: 1"), "Metadata values"),
-    "Only the six spec fields": (PORTABILITY, _skill("name: s\ndescription: Does a thing.\nmodel: x"), "Unexpected key"),
-    "No angle brackets in `description`": (HARDENING, _skill("name: s\ndescription: Does a <thing>."), "angle brackets"),
-    "No em dash in `SKILL.md`": (HARDENING, _skill(body="A \u2014 B.\n"), "em dash"),
-    "Body under 500 lines": (HARDENING, _skill(body="x\n" * 600), "lines (recommended"),
-    "Body under about 5000 tokens": (HARDENING, _skill(body="x" * 24000 + "\n"), "tokens (recommended"),
-    "Body under 8000 bytes (Codex)": (HARDENING, _skill(body="x" * 9000 + "\n"), "8000 bytes"),
-    "`description` under 973 characters": (HARDENING, _skill(f"name: s\ndescription: {'d' * 1000}"), "within 5%"),
-    "ASCII-only `name`": (HARDENING, None, "non-ASCII"),
+    "`SKILL.md` exists": (SPEC, Fixture(skill_md=None), "SKILL.md not found"),
+    "Frontmatter is a YAML mapping": (SPEC, Fixture("no frontmatter\n"), "frontmatter"),
+    "Exactly one `SKILL.md`": (HARDENING, Fixture(nested=True), "SKILL.md files"),
+    "`name` present and a non-empty string": (SPEC, Fixture(_skill("description: Does a thing.")), "Missing 'name'"),
+    "`name` character set and hyphens": (SPEC, Fixture(_skill("name: S\ndescription: Does a thing.")), "kebab-case"),
+    "`name` at most 64 characters": (SPEC, Fixture(_skill(f"name: {'s' * 65}\ndescription: Does a thing.")), "Maximum is 64"),
+    "`name` matches the directory": (SPEC, Fixture(_skill("name: t\ndescription: Does a thing.")), "parent directory"),
+    "`description` present and a non-empty string": (SPEC, Fixture(_skill("name: s")), "Missing 'description'"),
+    "`description` at most 1024 characters": (SPEC, Fixture(_skill(f"name: s\ndescription: {'d' * 1025}")), "Maximum is 1024"),
+    "`license` is a string": (SPEC, Fixture(_skill("name: s\ndescription: Does a thing.\nlicense: 1")), "License must be"),
+    "`allowed-tools` is a string": (SPEC, Fixture(_skill("name: s\ndescription: Does a thing.\nallowed-tools: [a]")), "Allowed tools must be"),
+    "`compatibility` a string of at most 500 characters": (SPEC, Fixture(_skill(f"name: s\ndescription: Does a thing.\ncompatibility: {'c' * 501}")), "Maximum is 500"),
+    "`metadata` maps strings to strings": (SPEC, Fixture(_skill("name: s\ndescription: Does a thing.\nmetadata:\n  k: 1")), "Metadata values"),
+    "Only the six spec fields": (PORTABILITY, Fixture(_skill("name: s\ndescription: Does a thing.\nmodel: x")), "Unexpected key"),
+    "No angle brackets in `description`": (HARDENING, Fixture(_skill("name: s\ndescription: Does a <thing>.")), "angle brackets"),
+    "No em dash in `SKILL.md`": (HARDENING, Fixture(_skill(body="A \u2014 B.\n")), "em dash"),
+    "Body under 500 lines": (HARDENING, Fixture(_skill(body="x\n" * 600)), "lines (recommended"),
+    "Body under about 5000 tokens": (HARDENING, Fixture(_skill(body="x" * 24000 + "\n")), "tokens (recommended"),
+    "Body under 8000 bytes (Codex)": (HARDENING, Fixture(_skill(body="x" * 9000 + "\n")), "8000 bytes"),
+    "`description` under 973 characters": (HARDENING, Fixture(_skill(f"name: s\ndescription: {'d' * 1000}")), "within 5%"),
+    "ASCII-only `name`": (HARDENING, Fixture(_skill("name: caf\u00e9\ndescription: Does a thing."), dir_name="caf\u00e9"), "non-ASCII"),
 }
 
 
-def _tier_table():
-    """Map each row label of the provenance tier table to its tier cell."""
+def _tier_section():
+    """Return the text of the provenance file's tier-table section."""
     text = PROVENANCE.read_text(encoding="utf-8")
     match = re.search(rf"^{re.escape(TIER_HEADING)}\n(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL)
-    if not match:
-        return {}
-    rows = {}
-    for line in match.group(1).splitlines():
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if line.startswith("|") and len(cells) >= 2 and cells[0] not in ("Check", "") and not set(cells[0]) <= {"-", " "}:
-            rows[cells[0]] = cells[1]
-    return rows
+    return match.group(1) if match else ""
 
 
 class TestTierTable(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.section = _tier_section()
+        cls.tiers = {row["Check"]: row.get("Tier") for row in table_rows(cls.section)}
+
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
 
-    def _emitted(self, label, content):
-        skill_dir = self.tmp / ("caf\u00e9" if label == "ASCII-only `name`" else "s")
-        skill_dir.mkdir()
-        if label == "ASCII-only `name`":
-            content = _skill("name: caf\u00e9\ndescription: Does a thing.")
-        if content == "EXTRA":
-            content = _skill()
-            (skill_dir / "sub").mkdir()
-            (skill_dir / "sub" / "SKILL.md").write_text(content, encoding="utf-8")
-        if content is not None:
-            (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+    def _messages_for_fixture(self, fixture):
+        """Build the fixture and return every error and warning the validator emits for it."""
+        skill_dir = fixture.build(self.tmp)
         report = inspect_skill(skill_dir)
         shutil.rmtree(skill_dir)
         return report["errors"] + report["warnings"]
 
     def test_every_catalog_fixture_triggers_its_check(self):
-        for label, (_, content, fragment) in CATALOG.items():
+        for label, (_, fixture, fragment) in CATALOG.items():
             with self.subTest(label=label):
-                self.assertTrue(any(fragment in m for m in self._emitted(label, content)), label)
+                self.assertTrue(any(fragment in m for m in self._messages_for_fixture(fixture)), label)
 
     def test_table_names_exactly_the_validator_checks(self):
-        self.assertEqual(sorted(_tier_table()), sorted(CATALOG))
+        self.assertEqual(sorted(self.tiers), sorted(CATALOG))
+
+    def test_table_states_tier_and_source_only(self):
+        # Strict versus import severity is owned by spec-reference.md, not this table.
+        self.assertEqual(table_header(self.section), ["Check", "Tier", "Source"])
 
     def test_each_check_has_one_expected_tier(self):
-        table = _tier_table()
         for label, (tier, _, _) in CATALOG.items():
             with self.subTest(label=label):
-                self.assertEqual(table.get(label), tier)
+                self.assertEqual(self.tiers.get(label), tier)
 
 
 # Phrasing that describes a change from an earlier version instead of a present-tense fact.
@@ -111,7 +130,7 @@ EDIT_HISTORY = re.compile(
 # Backticked paths under the skill's own top-level directories.
 PACKAGE_PATH = re.compile(r"`((?:references|scripts|assets|evals|tests)/[^`\s]+\.\w+)`")
 # Directories package_skill.py leaves out of the packaged skill.
-UNPACKAGED = ("evals/", "tests/")
+UNPACKAGED = tuple(name + "/" for name in sorted(ROOT_EXCLUDE_DIRS))
 
 
 class TestSpecReferenceText(unittest.TestCase):
