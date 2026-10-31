@@ -2,7 +2,7 @@
 
 A skill can bundle executable code under `scripts/`. Scripts suit deterministic, repetitive
 work. The agent runs them without loading their source into context, so they cost no tokens.
-This file expands the script guidance in `authoring-guide.md`.
+This file owns the script guidance; other references point here.
 
 ## Choose a one-off command or a bundled script
 
@@ -42,20 +42,26 @@ Run Python scripts as modules. Package-relative imports then resolve correctly.
 
 ## Bundled script inspection checklist
 
-Every executable file under `scripts/` (except `__init__.py`) must pass this checklist before
-the skill is packaged:
+Agents run scripts in non-interactive shells. Every executable file under `scripts/` (except
+`__init__.py`) must pass this checklist before the skill is packaged:
 
 - [ ] Listed in `SKILL.md` with a one-line purpose and invocation example.
-- [ ] Non-interactive: no blocking prompts, reads input from flags, env vars, or stdin.
+- [ ] Non-interactive: no blocking prompts (a blocking prompt hangs forever); reads input from
+      flags, env vars, or stdin.
 - [ ] `--help` documents usage, arguments, and exit codes.
 - [ ] `--dry-run` available for every destructive operation.
+- [ ] Input constraints validated up front, failing early with a clear message.
 - [ ] Errors state what went wrong, what was expected, and what to try.
-- [ ] Structured output (JSON, CSV, TSV) on stdout; diagnostics on stderr.
+- [ ] Documented exit codes: `0` for success, distinct nonzero codes for distinct failures, so
+      the agent can branch on the code without parsing text.
+- [ ] Structured output (JSON, CSV, TSV) on stdout; diagnostics on stderr, so stdout stays
+      machine-parseable while logs stay visible.
 - [ ] Idempotent: rerunning does not corrupt state or duplicate side effects.
 - [ ] Safe defaults: read-only unless the user opts in to writes.
 - [ ] Dependencies declared inline (PEP 723, npm:, bundler/inline) or documented in
       `compatibility`.
-- [ ] Output size kept predictable (under ~10K-30K chars; summarize or paginate large results).
+- [ ] Output size kept predictable: harnesses often truncate around 10K-30K chars, so summarize
+      or paginate large results.
 
 ## Make scripts self-contained
 
@@ -97,25 +103,6 @@ end
 ```
 
 Treat an external manifest as the fallback, not the default.
-
-## Design scripts for agentic use
-
-Agents run scripts in non-interactive shells. Design for that environment.
-
-- Never prompt interactively. A blocking prompt hangs forever.
-- Accept input through flags, environment variables, or stdin.
-- Document usage with `--help`.
-- Write errors that state what went wrong, what was expected, and what to try.
-- Emit structured output: JSON, CSV, or TSV. Send data to stdout and diagnostics to stderr.
-  The split keeps stdout machine-parseable while logs stay visible.
-- Be idempotent. A rerun must not corrupt state or duplicate side effects.
-- Validate input constraints and fail early with a clear message.
-- Offer `--dry-run` for every destructive operation.
-- Use documented exit codes. Reserve `0` for success and nonzero codes for distinct failures.
-  The agent can branch on the code without parsing text.
-- Choose safe defaults. Stay read-only unless the user opts in to writes.
-- Keep output size predictable. Harnesses often truncate around 10-30K characters.
-  Summarize or paginate large results instead of printing them whole.
 
 ## Supported languages
 

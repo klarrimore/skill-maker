@@ -66,8 +66,8 @@ The core loop branches by task. Each path starts with the same foundation:
 ### Create a new skill
 
 Follow the core loop foundation. Draft the portable core with only the six
-recognized frontmatter fields. Omit `allowed-tools` by default; pre-approval is
-client-specific and requires explicit trust review. Agent-agnostic output uses
+recognized frontmatter fields (the `allowed-tools` default is in
+`references/authoring-guide.md`). Agent-agnostic output uses
 only the portable fields. Client-specific fields, install paths, precedence,
 plugins, hosted IDs, and marketplace metadata remain opt-in target adapters
 outside the canonical artifact; do not invent an adapter when no target was
@@ -89,13 +89,7 @@ python -m scripts.skill_eval improve <skill> --workspace <workspace> \
   --max-iterations 3 --adapter-arg <executable> --adapter-arg <argument>
 ```
 
-Revision adapters receive a temporary staging directory outside the workspace.
-Workspace markers (grading.json, history.json, evals/, tests/) are unreachable
-by walking ancestors from the provided paths. Held-out prompts, labels, and
-scores are never sent to revision requests.
-
-Read `references/evaluation.md` for the full adapter contract, workspace
-artifacts, exit codes, benchmark diagnostics, and manual fallback.
+Isolation, held-out handling, and promotion: `references/evaluation.md`.
 
 ## Authoring rules
 
@@ -108,12 +102,7 @@ explain why important steps exist. Avoid hidden access, data exfiltration,
 misleading descriptions, and client-specific assumptions.
 Use a comma, period, colon, or parentheses instead of U+2014.
 
-Format validation is not a safety review. The bundled validator checks format
-constraints, not whether the skill's behavior matches its description.
-
-Always-on instructions remain separate from skills. If the honest trigger
-description would be "use this on every task", recommend the always-on layer
-instead.
+Passing validation is not a safety review; see `references/authoring-guide.md`.
 
 ## Evaluation and improvement
 
@@ -127,16 +116,11 @@ packaging tools.
 
 The offline audit (`python -m scripts.skill_eval audit`) now includes
 progressive-disclosure and portable-resource warnings:
-- `skill.allowed-tools`: experimental pre-approval field requires trust review.
+- `skill.allowed-tools`: frontmatter carries the experimental pre-approval field.
 - `resource.unaddressed.<path>`: a packaged reference or asset not named in
   the body.
 - `resource.reference-depth.<path>`: file nested below `references/<subdir>/`.
 - `script.unlisted.<path>`: a bundled script not named in the body.
-
-Candidates and `best-skill/<name>/` stay under the workspace. Promotion requires
-a strict held-out improvement. Revision isolation uses a system temporary directory
-outside the evaluator workspace; the stored request persists sanitized `$ISOLATED/...`
-paths rather than live filesystem paths. This is not an OS security sandbox.
 
 Read `references/evaluation.md` for the adapter contract, workspace artifacts,
 exit codes, benchmark diagnostics, and manual fallback. Read

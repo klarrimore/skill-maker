@@ -205,7 +205,7 @@ client-specific machinery.
 
 - Runtime varies. Some agent runtimes have no network access and cannot install packages at run
   time. Do not assume either is available. Prefer inline dependency declarations for scripts
-  (see authoring-guide.md), and make scripts degrade gracefully when a capability is absent.
+  (see `references/scripts.md`), and make scripts degrade gracefully when a capability is absent.
 - The folder is the portable unit of distribution. Plugin and marketplace packaging formats are
   client-specific and mutually incompatible. To reach more than one client, ship the skill as a
   folder in a skills directory the target clients read, not only as a plugin.
@@ -278,7 +278,4 @@ never authorizes packaging or installation.
 
 ## Security posture
 
-The spec is silent on security, but skills execute bundled scripts with the agent's permissions,
-and their instructions are processed at operator level. Treat any third-party skill like an
-unaudited dependency: inspect before installing, prefer trusted sources, and sandbox script
-execution. Never ship a skill whose real behavior differs from what its description implies.
+The spec is silent on security; see "Format validation is not a safety review" in the guide.
