@@ -6,20 +6,24 @@
     {"query": "my SKILL.md keeps getting rejected on upload, something about the name field not being allowed. can you fix it so it passes?", "should_trigger": true, "split": "train"},
     {"query": "make this skill portable so it runs on other agents, not just the one I originally built it on", "should_trigger": true, "split": "train"},
     {"query": "i have a pdf-filling skill that works fine but the instructions inside it are a tangled mess, can you refactor it to be cleaner", "should_trigger": true, "split": "train"},
+    {"query": "my code-review skill loads fine, but once it kicks in it burns way too many tokens and re-reads the same files over and over. can you make it leaner without losing quality?", "should_trigger": true, "split": "train"},
     {"query": "the description on my skill is too vague and it basically never triggers when I actually want it - help me tune the wording", "should_trigger": true, "split": "held_out"},
     {"query": "write a few realistic test cases for the skill I just wrote and run them so I know it actually does the right thing", "should_trigger": true, "split": "held_out"},
     {"query": "i want to build something from scratch that converts our internal markdown docs into a branded docx every time, reusably", "should_trigger": true, "split": "held_out"},
     {"query": "is my skill actually making the agent better, or is it just overhead? compare it against not using it", "should_trigger": true, "split": "held_out"},
     {"query": "check that the frontmatter in this SKILL.md is valid and spec-compliant before I share it with the team", "should_trigger": true, "split": "held_out"},
+    {"query": "the skill fires when it should, but the reports it produces are mediocre and it takes forever - figure out why the output is weak and fix the skill", "should_trigger": true, "split": "held_out"},
     {"query": "what skills do I currently have installed, and which ones are enabled right now?", "should_trigger": false, "split": "train"},
     {"query": "validate this json payload against the openapi schema in api/spec.yaml", "should_trigger": false, "split": "train"},
     {"query": "benchmark the p95 latency of our /search endpoint under 500 concurrent users", "should_trigger": false, "split": "train"},
     {"query": "improve the meta description on our landing page so it ranks better on google", "should_trigger": false, "split": "train"},
     {"query": "how do I install a plugin from a marketplace in claude code?", "should_trigger": false, "split": "train"},
+    {"query": "our support chatbot's API bill is too high - trim the system prompt we send on every call so it uses fewer tokens", "should_trigger": false, "split": "train"},
     {"query": "review my pull request and flag any bugs before I merge it", "should_trigger": false, "split": "held_out"},
     {"query": "what's a good agent framework for building a customer-support bot?", "should_trigger": false, "split": "held_out"},
     {"query": "explain what the agentskills.io standard is and how it relates to MCP", "should_trigger": false, "split": "held_out"},
     {"query": "my AGENTS.md is getting bloated - can you split it into a few smaller files so it stays readable?", "should_trigger": false, "split": "held_out"},
-    {"query": "set up a custom slash command that runs our test suite and posts the result to slack", "should_trigger": false, "split": "held_out"}
+    {"query": "set up a custom slash command that runs our test suite and posts the result to slack", "should_trigger": false, "split": "held_out"},
+    {"query": "this python ETL job is slow and eats memory, profile it and speed it up", "should_trigger": false, "split": "held_out"}
   ]
 }
