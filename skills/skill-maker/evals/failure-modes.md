@@ -2,8 +2,8 @@
 
 The concrete ways skill-maker's instructions fail in practice, and what catches each. This is the
 error-analysis record behind `evals.json`: expectations are written against these failure modes,
-not borrowed generic qualities. Status is from the latest trace review, `runs/2026-09-30/summary.md`
-(a 5-trace, single-model sample, so read it as evidence, not closure). Status values: **Observed**
+not borrowed generic qualities. Status is from the latest trace review, `runs/2026-09-30/summary.md`.
+Status values: **Observed**
 (a real instance occurred and the catch worked), **Confirmed absent** (the review checked for it and
 it did not occur), **Not exercised** (no trace produced it), **Untested** (the catch never ran).
 
@@ -38,5 +38,7 @@ it did not occur), **Not exercised** (no trace produced it), **Untested** (the c
 - After a trace review, update the Status column and the pointer to the run summary above.
 
 Done when every FM id in `evals.json` has a row here citing exactly the evals that map to it, every
-"Caught by" cell names an existing expectation, rubric, or script, and every Status is one of the
-four values above. `tests/test_evals_data.py` checks all three.
+"Caught by" cell names only existing files and, for each eval it cites, an expectation that eval
+carries (or, for a mode with no objective catch, the trace review and rule it is reviewed against),
+and every Status is one of the four values above. `tests/test_evals_data.py` checks the eval
+mapping, that named files exist, that cited judge and regex expectations exist, and the Status values.
