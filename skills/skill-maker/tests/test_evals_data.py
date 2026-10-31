@@ -2,6 +2,7 @@
 
 import ast
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -131,10 +132,29 @@ def _table_rows(text, first_cell_prefix):
             yield cells
 
 
+def _catalogue_rows():
+    """Map each FM id in failure-modes.md to its row, keyed by the table's header names."""
+    text = (EVALS_DIR / "failure-modes.md").read_text(encoding="utf-8")
+    rows, header = {}, None
+    for line in text.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if cells[0] == "ID":
+            header = cells
+        elif header and cells[0].startswith("FM-"):
+            rows[cells[0]] = dict(zip(header, cells))
+    return rows
+
+
 def _caught_by():
     """Map each FM id in failure-modes.md to its 'Caught by' cell."""
-    text = (EVALS_DIR / "failure-modes.md").read_text(encoding="utf-8")
-    return {cells[0]: cells[2] for cells in _table_rows(text, "FM-")}
+    return {fm: row["Caught by"] for fm, row in _catalogue_rows().items()}
+
+
+def _cited_evals(cell):
+    """Eval ids a 'Caught by' cell cites, written as 'Eval N'."""
+    return {int(n) for n in re.findall(r"\bEval (\d+)\b", cell)}
 
 
 def _held_out_markers(case):
@@ -177,6 +197,80 @@ class TestJudgeMapping(unittest.TestCase):
                 for name, text in rubrics.items():
                     with self.subTest(eval_id=case.id, rubric=name, marker=marker):
                         self.assertFalse(marker.lower() in text, "held-out material in a judge example")
+
+
+class TestFailureModeCatalogue(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.suite = load_eval_suite(SKILL_ROOT)
+        cls.caught_by = _caught_by()
+
+    def test_every_eval_failure_mode_has_a_catalogue_row(self):
+        for case in self.suite.evals:
+            for fm in case.failure_modes:
+                with self.subTest(eval_id=case.id, fm=fm):
+                    self.assertIn(fm, self.caught_by)
+
+    def test_each_row_cites_exactly_the_evals_that_map_to_it(self):
+        for fm, cell in self.caught_by.items():
+            expected = {case.id for case in self.suite.evals if fm in case.failure_modes}
+            with self.subTest(fm=fm):
+                self.assertEqual(_cited_evals(cell), expected, cell)
+
+    def test_every_named_mechanism_exists(self):
+        roots = (EVALS_DIR, SKILL_ROOT, SKILL_ROOT / "scripts", SKILL_ROOT.parents[1] / "scripts")
+        for fm, cell in self.caught_by.items():
+            for token in re.findall(r"`([^`]+)`", cell):
+                with self.subTest(fm=fm, token=token):
+                    self.assertTrue(
+                        any((root / name).is_file() for root in roots for name in (token, token + ".py")),
+                        "{} names no existing file".format(token),
+                    )
+
+    def test_each_cited_eval_carries_the_expectations_its_clause_names(self):
+        by_id = {case.id: case for case in self.suite.evals}
+        for fm, cell in self.caught_by.items():
+            self.assertNotIn("assertion", cell, "{}: evals.json has no assertion kind".format(fm))
+            for clause in cell.split(";"):
+                rubrics = set(re.findall(r"`(judges/[^`]+)`", clause))
+                for eval_id in _cited_evals(clause):
+                    expectations = by_id[eval_id].expectations
+                    with self.subTest(fm=fm, eval_id=eval_id):
+                        if "regex" in clause:
+                            self.assertIn("regex", {item.kind for item in expectations})
+                        for rubric in rubrics:
+                            self.assertIn(
+                                "evals/" + rubric,
+                                {item.data.get("rubric") for item in expectations if item.kind == "judge"},
+                            )
+
+    def test_file_opens_with_the_catalogue_and_points_to_the_latest_run(self):
+        text = (EVALS_DIR / "failure-modes.md").read_text(encoding="utf-8")
+        lines = text.splitlines()
+        first_table = next(i for i, line in enumerate(lines) if line.startswith("| ID |"))
+        self.assertFalse(any(line.startswith("## ") for line in lines[:first_table]), "catalogue must lead the file")
+        latest = sorted(path.name for path in (EVALS_DIR / "runs").iterdir() if path.is_dir())[-1]
+        self.assertIn("`runs/{}/summary.md`".format(latest), "\n".join(lines[:first_table]))
+
+    def test_status_column_is_single_valued(self):
+        allowed = {"Observed", "Confirmed absent", "Not exercised", "Untested"}
+        for fm, row in _catalogue_rows().items():
+            with self.subTest(fm=fm):
+                self.assertIn(row.get("Status"), allowed)
+                self.assertNotIn("Gap", row["Caught by"])
+
+    def test_no_pointer_to_a_numbered_step_or_missing_path(self):
+        text = (EVALS_DIR / "failure-modes.md").read_text(encoding="utf-8")
+        self.assertNotRegex(text, r"\bStep \d")
+        for token in re.findall(r"`((?:runs|references|judges)/[^`]+)`", text):
+            with self.subTest(token=token):
+                self.assertTrue((EVALS_DIR / token).exists() or (SKILL_ROOT / token).exists(), token)
+
+    def test_upkeep_section_ends_with_a_done_condition(self):
+        text = (EVALS_DIR / "failure-modes.md").read_text(encoding="utf-8")
+        section = _sections(text, "## ")["Keeping this current"].strip()
+        last = section.split("\n\n")[-1].lstrip("- ")
+        self.assertTrue(last.startswith("Done when"), last[:60])
 
 
 class TestJudgeCalibrationStatus(unittest.TestCase):
