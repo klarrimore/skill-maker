@@ -1,6 +1,6 @@
 ---
 name: skill-maker
-description: Use this skill whenever the user wants to author a skill from scratch, turn a workflow or repeated task into a reusable skill, edit or refactor an existing skill, make a skill spec-compliant or portable, test or benchmark a skill, or optimize a skill description for better triggering, even if they do not say the word "skill" explicitly.
+description: Create, edit, test, and optimize portable Agent Skills (SKILL.md directories). Use when the user wants to author a skill from scratch, turn a workflow or repeated task into a reusable skill, refactor an existing skill, make one spec-compliant or portable, test or benchmark it, tune its description so it triggers reliably, or improve the output quality and token cost of a skill that already fires, even if they do not say the word "skill".
 license: Apache-2.0
 compatibility: Portable across any skills-compatible agent that reads the agentskills.io format. Bundled validation and packaging scripts require Python 3.8+ and PyYAML.
 metadata:
