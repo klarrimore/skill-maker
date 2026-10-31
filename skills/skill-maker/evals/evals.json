@@ -11,7 +11,8 @@
       "files": [],
       "failure_modes": ["FM-1", "FM-2", "FM-3", "FM-4", "FM-5"],
       "expectations": [
-        {"kind": "judge", "rubric": "evals/judges/generic-procedure-detection.md", "result": "pass"}
+        {"kind": "judge", "rubric": "evals/judges/generic-procedure-detection.md", "result": "pass"},
+        {"kind": "regex", "target": "transcript", "pattern": "Skill is valid!"}
       ]
     },
     {
@@ -21,9 +22,9 @@
       "prompt": "I downloaded this skill but it won't load and I think the SKILL.md is malformed. The copy at evals/files/broken-skill/SKILL.md is read-only, so work on your own copy. Make it spec-compliant and confirm it actually validates.",
       "expected_output": "A candidate copy is repaired and validated while the broken source fixture remains unchanged.",
       "files": ["evals/files/broken-skill/SKILL.md"],
-      "failure_modes": ["FM-2", "FM-8", "FM-11", "FM-15"],
+      "failure_modes": ["FM-2", "FM-4", "FM-8", "FM-11", "FM-15"],
       "expectations": [
-        {"kind": "judge", "rubric": "evals/judges/generic-procedure-detection.md", "result": "pass"}
+        {"kind": "regex", "target": "transcript", "pattern": "Skill is valid!"}
       ]
     },
     {
@@ -47,7 +48,8 @@
       "files": ["evals/files/standup-summary/SKILL.md"],
       "failure_modes": ["FM-4", "FM-8", "FM-13", "FM-14"],
       "expectations": [
-        {"kind": "judge", "rubric": "evals/judges/self-improvement-scope.md", "result": "pass"}
+        {"kind": "judge", "rubric": "evals/judges/self-improvement-scope.md", "result": "pass"},
+        {"kind": "regex", "target": "transcript", "pattern": "Skill is valid!"}
       ]
     },
     {
@@ -69,9 +71,10 @@
       "prompt": "I already have a solid skill and I don't want to run any formal evaluations or benchmarks. Just vibe with me and tighten the wording in the body so it reads better.",
       "expected_output": "The wording is improved within the requested scope, formal evals are not forced, and the result is still validated.",
       "files": ["evals/files/skip-evals-skill/SKILL.md"],
-      "failure_modes": ["FM-12", "FM-14", "FM-16"],
+      "failure_modes": ["FM-4", "FM-12", "FM-14", "FM-16"],
       "expectations": [
-        {"kind": "judge", "rubric": "evals/judges/skip-evals-scope.md", "result": "pass"}
+        {"kind": "judge", "rubric": "evals/judges/skip-evals-scope.md", "result": "pass"},
+        {"kind": "regex", "target": "transcript", "pattern": "Skill is valid!"}
       ]
     }
   ]
