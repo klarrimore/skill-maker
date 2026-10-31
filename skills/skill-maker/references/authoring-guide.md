@@ -117,8 +117,8 @@ not surprised.
    ```bash
    python -m scripts.quick_validate <skill> --mode import --json
    ```
-   Import mode reports unknown fields, name mismatches, angle brackets, em dashes, and
-   optional-field violations as warnings, not errors.
+   Which checks import mode downgrades to warnings is in `spec-reference.md` "Validation:
+   strict versus import".
 2. **Decide** whether to convert to portable or leave it client-specific. Conversion means
    removing or relocating client extensions into `compatibility` and resolving all warnings.
 3. When converting, **copy** the skill, resolve warnings explicitly, and pass strict validation.
