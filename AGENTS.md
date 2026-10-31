@@ -18,6 +18,8 @@ The skill's own references are the authority on authoring; reach for them instea
 - `skills/skill-maker/references/scripts.md` — before writing a bundled script: one-off commands, self-contained dependencies, and agent-friendly design.
 - `skills/skill-maker/references/description-optimization.md` — when tuning the `description` for triggering: the eval-driven method.
 
+In `skills/skill-maker/SKILL.md` and `references/`, punctuate asides with a comma, colon, or parentheses in place of the em dash (U+2014): the validator rejects it in `SKILL.md`, and `references/` keeps the same style.
+
 ## Verifying changes
 
 Run the smoke driver; it exercises the validator, packager, tests, and eval-review UI, and exits non-zero on the first failure:
@@ -33,8 +35,7 @@ Individual surfaces, direct-invocation snippets, and gotchas live in `scripts/RE
 Each file below is the single source of truth for its topic; load it in full when its condition applies.
 
 - `.agents/instructions/agent-safety.instructions.md` — before building or modifying an agent's tool access, content filtering, or multi-agent composition.
-- `.agents/instructions/markdown-gfm.instructions.md` — whenever writing or editing Markdown.
-- `.agents/instructions/update-docs-on-code-change.instructions.md` — when a code change needs matching doc work (READMEs, API docs, `CHANGELOG.md`).
+- `.agents/instructions/update-docs-on-code-change.instructions.md` — after changing anything under `skills/skill-maker/` or `scripts/`: which docs track it, and the `CHANGELOG.md` and version conventions.
 
 `.github/instructions/` holds per-client forwarders to these for auto-discovery; edit the canonical file, not the forwarder. Keep new reusable agent assets in `.agents/` (see `.agents/README.md`).
 
