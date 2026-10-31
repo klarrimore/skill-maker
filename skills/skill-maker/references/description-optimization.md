@@ -39,7 +39,7 @@ unintended regression.
 
 ## Review and run
 
-Render the query set with `scripts/render_review.py` or present it inline when no display is
+Render the query set with `assets/eval_review.html` or present it inline when no display is
 available. Let the author correct queries before tuning the description. Then run at least three
 repetitions per query:
 

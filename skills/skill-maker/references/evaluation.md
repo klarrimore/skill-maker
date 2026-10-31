@@ -111,8 +111,8 @@ editing it.
 ## Paired task evaluation
 
 1. Run `audit` first and fix error findings. Warnings are visible tradeoffs, not silent passes.
-2. Select ordinary task evals. Keep eval 3, the description trigger case, separate from routine
-   task regressions when its cost is not justified.
+2. Select ordinary task evals. Keep trigger evals separate from routine task regressions when
+   their cost is not justified.
 3. Run the same prompt and input files with `with_skill` and `without_skill`, interleaved by
    case and repetition number. The baseline can be no skill or a snapshot of the old skill.
 4. Grade deterministic expectations from output artifacts and final/transcript text. Send only
