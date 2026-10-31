@@ -2,6 +2,17 @@
 
 This document defines the JSON schemas used by skill-maker.
 
+## Contents
+
+- [evals.json](#evalsjson)
+- [trigger_queries.json](#trigger_queriesjson)
+- [judge_labels.json](#judge_labelsjson)
+- [trigger_results.json](#trigger_resultsjson)
+- [history.json](#historyjson)
+- [request.json (revise operation)](#requestjson-revise-operation)
+- [grading.json](#gradingjson)
+- [benchmark.json](#benchmarkjson)
+
 ---
 
 ## evals.json
@@ -289,62 +300,6 @@ the `skill-eval/v1` runner.
 
 ---
 
-## metrics.json
-
-Output from the executor agent. Located at `<run-dir>/outputs/metrics.json`.
-
-```json
-{
-  "tool_calls": {
-    "Read": 5,
-    "Write": 2,
-    "Bash": 8,
-    "Edit": 1,
-    "Glob": 2,
-    "Grep": 0
-  },
-  "total_tool_calls": 18,
-  "total_steps": 6,
-  "files_created": ["filled_form.pdf", "field_values.json"],
-  "errors_encountered": 0,
-  "output_chars": 12450,
-  "transcript_chars": 3200
-}
-```
-
-**Fields:**
-- `tool_calls`: Count per tool type
-- `total_tool_calls`: Sum of all tool calls
-- `total_steps`: Number of major execution steps
-- `files_created`: List of output files created
-- `errors_encountered`: Number of errors during execution
-- `output_chars`: Total character count of output files
-- `transcript_chars`: Character count of transcript
-
----
-
-## timing.json
-
-Wall clock timing for a run. Located at `<run-dir>/timing.json`.
-
-**How to capture:** When a subagent task completes, the task notification includes `total_tokens` and `duration_ms`. Save these immediately: they are not persisted anywhere else and cannot be recovered after the fact.
-
-```json
-{
-  "total_tokens": 84852,
-  "duration_ms": 23332,
-  "total_duration_seconds": 23.3,
-  "executor_start": "2026-01-15T10:30:00Z",
-  "executor_end": "2026-01-15T10:32:45Z",
-  "executor_duration_seconds": 165.0,
-  "grader_start": "2026-01-15T10:32:46Z",
-  "grader_end": "2026-01-15T10:33:12Z",
-  "grader_duration_seconds": 26.0
-}
-```
-
----
-
 ## benchmark.json
 
 Output from Benchmark mode. Located at `benchmarks/<timestamp>/benchmark.json`.
@@ -438,128 +393,3 @@ remain separate from objective scores until calibrated.
 **Important:** Consumers should use the exact `configuration`, `result`, and
 `run_summary` field names. `configurations` and `deltas` are retained as
 machine-readable aliases for the evaluator's richer report.
-
----
-
-## comparison.json
-
-Output from blind comparator. Located at `<grading-dir>/comparison-N.json`.
-
-```json
-{
-  "winner": "A",
-  "reasoning": "Output A provides a complete solution with proper formatting and all required fields. Output B is missing the date field and has formatting inconsistencies.",
-  "rubric": {
-    "A": {
-      "content": {
-        "correctness": 5,
-        "completeness": 5,
-        "accuracy": 4
-      },
-      "structure": {
-        "organization": 4,
-        "formatting": 5,
-        "usability": 4
-      },
-      "content_score": 4.7,
-      "structure_score": 4.3,
-      "overall_score": 9.0
-    },
-    "B": {
-      "content": {
-        "correctness": 3,
-        "completeness": 2,
-        "accuracy": 3
-      },
-      "structure": {
-        "organization": 3,
-        "formatting": 2,
-        "usability": 3
-      },
-      "content_score": 2.7,
-      "structure_score": 2.7,
-      "overall_score": 5.4
-    }
-  },
-  "output_quality": {
-    "A": {
-      "score": 9,
-      "strengths": ["Complete solution", "Well-formatted", "All fields present"],
-      "weaknesses": ["Minor style inconsistency in header"]
-    },
-    "B": {
-      "score": 5,
-      "strengths": ["Readable output", "Correct basic structure"],
-      "weaknesses": ["Missing date field", "Formatting inconsistencies", "Partial data extraction"]
-    }
-  },
-  "expectation_results": {
-    "A": {
-      "passed": 4,
-      "total": 5,
-      "pass_rate": 0.80,
-      "details": [
-        {"text": "Output includes name", "passed": true}
-      ]
-    },
-    "B": {
-      "passed": 3,
-      "total": 5,
-      "pass_rate": 0.60,
-      "details": [
-        {"text": "Output includes name", "passed": true}
-      ]
-    }
-  }
-}
-```
-
----
-
-## analysis.json
-
-Output from post-hoc analyzer. Located at `<grading-dir>/analysis.json`.
-
-```json
-{
-  "comparison_summary": {
-    "winner": "A",
-    "winner_skill": "path/to/winner/skill",
-    "loser_skill": "path/to/loser/skill",
-    "comparator_reasoning": "Brief summary of why comparator chose winner"
-  },
-  "winner_strengths": [
-    "Clear step-by-step instructions for handling multi-page documents",
-    "Included validation script that caught formatting errors"
-  ],
-  "loser_weaknesses": [
-    "Vague instruction 'process the document appropriately' led to inconsistent behavior",
-    "No script for validation, agent had to improvise"
-  ],
-  "instruction_following": {
-    "winner": {
-      "score": 9,
-      "issues": ["Minor: skipped optional logging step"]
-    },
-    "loser": {
-      "score": 6,
-      "issues": [
-        "Did not use the skill's formatting template",
-        "Invented own approach instead of following step 3"
-      ]
-    }
-  },
-  "improvement_suggestions": [
-    {
-      "priority": "high",
-      "category": "instructions",
-      "suggestion": "Replace 'process the document appropriately' with explicit steps",
-      "expected_impact": "Would eliminate ambiguity that caused inconsistent behavior"
-    }
-  ],
-  "transcript_insights": {
-    "winner_execution_pattern": "Read skill -> Followed 5-step process -> Used validation script",
-    "loser_execution_pattern": "Read skill -> Unclear on approach -> Tried 3 different methods"
-  }
-}
-```
