@@ -8,6 +8,7 @@
 - Broadened the overfitting judge to description revisions (FM-7) and replaced its example that quoted a held-out fixture (#12).
 - Stated judge calibration status once, in `evals/README.md`, with a table that `tests/test_evals_data.py` keeps in step with `judge_labels.json` (#12).
 - Rewrote `evals/failure-modes.md` to open with the catalogue: every "Caught by" cell now names a real expectation, rubric, or script and cites exactly the evals that map to it in `evals.json`, a Status column replaces the dated 2026-09-30 run narrative (now a pointer to the run summary), and "Keeping this current" ends with a done-condition that `tests/test_evals_data.py` checks; evals 1 and 4 gain the validator-success `regex` expectation for FM-4 (#13).
+- Gave each topic shared by `spec-reference.md` and `spec-provenance.md` one owner with a one-line pointer in the other, added a validator-checks-by-tier table that `tests/test_spec_references.py` keeps in step with `quick_validate.py`, and restated edit-history entries and prohibitions as present-tense targets (#14).
 
 ## [1.14.0] - 2026-10-31
 
