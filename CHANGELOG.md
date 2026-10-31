@@ -1,4 +1,16 @@
 # Changelog - skill-maker
+## [1.15.0] - 2026-10-31
+
+### Changed
+
+- Bumped skill-maker to v1.15.
+
+### Fixed
+
+- Removed the unused `Iterable` import and the unused `eval_path` variable from `scripts/skill_eval.py`.
+
+[1.15.0]: https://github.com/klarrimore/skill-maker/compare/v1.14...v1.15
+
 ## [1.14.0] - 2026-10-31
 
 ### Added
@@ -15,6 +27,7 @@
 - Kept each authoring and evaluation rule in one owning reference (`authoring-guide.md`, `evaluation.md`, `scripts.md`), with pointers elsewhere; folded `spec-reference.md` "Security posture" into a pointer to `authoring-guide.md` (#6).
 - Pruned `references/schemas.md` to the contracts the evaluator uses and added a table of contents (#4).
 - Trimmed repo-level agent docs: replaced the generic doc-update template with a short doc-sync guide, dropped the GFM instructions, and reduced `CLAUDE.md` and `.github/copilot-instructions.md` to pointers to `AGENTS.md` (#8).
+- Refreshed the agent-skills config in `docs/agents/` to current templates: renamed the domain glossary from `CONTEXT.md` to `GLOSSARY.md` and updated the `gh` issue conventions for sub-issues, blockers, closing, and fork safety (#2).
 - Reviewed the remaining agent-facing material (judge rubrics, failure modes, spec references); follow-ups filed as #12, #13, #14 (#9).
 - Refactored `skill_eval.py` to share one `_reference_files` helper between the dead-pointer and TOC checks.
 

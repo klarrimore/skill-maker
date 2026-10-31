@@ -15,7 +15,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from scripts.eval_adapter import AdapterError, CommandAdapter, PROTOCOL, error_response
 from scripts.eval_models import (
@@ -192,7 +192,6 @@ def _audit_skill(skill_dir: Path) -> Dict[str, Any]:
             "Read the warning, weigh the compatibility tradeoff, and document the decision.",
         ))
 
-    eval_path = skill_dir / "evals" / "evals.json"
     suite: Optional[EvalSuite] = None
     try:
         suite = load_eval_suite(skill_dir)
