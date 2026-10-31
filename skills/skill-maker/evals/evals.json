@@ -23,7 +23,7 @@
       "files": ["evals/files/broken-skill/SKILL.md"],
       "failure_modes": ["FM-2", "FM-8", "FM-11", "FM-15"],
       "expectations": [
-        {"kind": "judge", "rubric": "evals/judges/generic-procedure-detection.md", "result": "pass"}
+        {"kind": "regex", "target": "transcript", "pattern": "quick_validate|skills-ref validate"}
       ]
     },
     {
@@ -69,9 +69,10 @@
       "prompt": "I already have a solid skill and I don't want to run any formal evaluations or benchmarks. Just vibe with me and tighten the wording in the body so it reads better.",
       "expected_output": "The wording is improved within the requested scope, formal evals are not forced, and the result is still validated.",
       "files": ["evals/files/skip-evals-skill/SKILL.md"],
-      "failure_modes": ["FM-12", "FM-14", "FM-16"],
+      "failure_modes": ["FM-4", "FM-12", "FM-14", "FM-16"],
       "expectations": [
-        {"kind": "judge", "rubric": "evals/judges/skip-evals-scope.md", "result": "pass"}
+        {"kind": "judge", "rubric": "evals/judges/skip-evals-scope.md", "result": "pass"},
+        {"kind": "regex", "target": "transcript", "pattern": "quick_validate|skills-ref validate"}
       ]
     }
   ]
