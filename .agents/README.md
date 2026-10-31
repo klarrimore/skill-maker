@@ -1,10 +1,7 @@
 # .agents
 
-Local reusable agent assets for this repository.
+Canonical reusable agent assets for this repository.
 
-- `agents/`: prompt fragments and subagent-specific guidance
-- `commands/`: reusable command templates and workflow snippets
-- `instructions/`: canonical reusable instruction documents loaded via `AGENTS.md`
+- `instructions/`: canonical instruction documents, each reached by a pointer in `AGENTS.md`
 
-Add new reusable agent material here instead of bloating `CLAUDE.md` or `.github/copilot-instructions.md`.
-Install reusable skills globally under `~/.agent/skills/` instead of keeping project-local copies here.
+Add new reusable agent material here and point to it from `AGENTS.md`; `CLAUDE.md` and `.github/copilot-instructions.md` stay one-line forwarders.

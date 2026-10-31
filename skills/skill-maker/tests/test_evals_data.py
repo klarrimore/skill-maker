@@ -7,6 +7,7 @@ from pathlib import Path
 from evals.grade_artifacts import grade
 from scripts.eval_models import EvalSchemaError, load_eval_suite, load_trigger_queries
 from scripts.quick_validate import validate_skill
+from scripts.utils import parse_frontmatter
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 EVALS_DIR = SKILL_ROOT / "evals"
@@ -57,12 +58,26 @@ class TestTriggerQueries(unittest.TestCase):
         cls.queries = load_trigger_queries(SKILL_ROOT)
 
     def test_versioned_queries_have_both_splits_and_labels(self):
-        self.assertEqual(len(self.queries), 20)
+        self.assertEqual(len(self.queries), 24)
         self.assertEqual({item["split"] for item in self.queries}, {"train", "held_out"})
         for split in ("train", "held_out"):
             subset = [item for item in self.queries if item["split"] == split]
             self.assertTrue(any(item["should_trigger"] for item in subset))
             self.assertTrue(any(not item["should_trigger"] for item in subset))
+
+    def test_post_activation_optimization_is_a_positive_in_both_splits(self):
+        # A skill that fires but performs poorly or costs too much routes to
+        # references/skill-optimization.md; both splits must exercise that path.
+        expected = {
+            "my code-review skill loads fine, but once it kicks in it burns way too many tokens and re-reads the same files over and over. can you make it leaner without losing quality?": "train",
+            "the skill fires when it should, but the reports it produces are mediocre and it takes forever - figure out why the output is weak and fix the skill": "held_out",
+        }
+        by_text = {item["query"]: item for item in self.queries}
+        for text, split in expected.items():
+            with self.subTest(split=split):
+                self.assertIn(text, by_text)
+                self.assertTrue(by_text[text]["should_trigger"])
+                self.assertEqual(by_text[text]["split"], split)
 
     def test_queries_are_unique(self):
         texts = [item["query"] for item in self.queries]
@@ -120,6 +135,13 @@ class TestSkillItselfIsGradeable(unittest.TestCase):
         self.assertTrue(valid, message)
         results = grade(SKILL_ROOT)
         self.assertTrue(all(item["passed"] for item in results), results)
+
+    def test_description_leads_with_the_action_and_covers_optimization(self):
+        text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        description = parse_frontmatter(text)[0]["description"]
+        self.assertLessEqual(len(description), 512)
+        self.assertTrue(description.startswith("Create"), description[:40])
+        self.assertIn("token cost", description)
 
 
 if __name__ == "__main__":

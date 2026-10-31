@@ -103,17 +103,12 @@ then reread with fresh eyes and cut.
 ## The portable core
 
 Agent-agnostic output uses only the six portable frontmatter fields (`name`, `description`,
-`license`, `allowed-tools`, `metadata`, `compatibility`). Omit `allowed-tools` by default;
-pre-approval is client-specific and requires explicit trust review.
+`license`, `allowed-tools`, `metadata`, `compatibility`).
 
 Client-specific fields (`context: fork`, `user-invocable`, `model`, platform-specific policy
 files) are spec-conformant extensions that lock the skill to the clients that read them. Keep
 them out of the portable core. If you need one, document it in `compatibility` so users are
 not surprised.
-
-The `description` first sentence is the routing signal an agent uses to weigh the skill.
-Lead with the primary action the skill performs. Push trigger keywords into the second sentence
-so a short first sentence already communicates the function.
 
 ## Converting an existing client-specific skill
 
@@ -141,7 +136,8 @@ activate the skill. Make the first sentence state the action and the domain:
 - Poor: "A skill for working with PDFs that helps you extract data." (the action is buried)
 - Poor: "Helps with PDFs." (no action)
 
-The first ~30 characters carry the most weight. Lead with the verb and the object.
+The first ~30 characters carry the most weight. Lead with the verb and the object. Push trigger
+keywords into the second sentence so a short first sentence already communicates the function.
 
 ## Near-miss boundaries
 
@@ -154,21 +150,21 @@ queries share recognizable terms with the description.
 ## Default omission of `allowed-tools`
 
 The `allowed-tools` field is experimental; support varies by agent. The portable core omits it
-by default. If a target adapter requires it, add it only after reviewing the tool list against
-the skill's real needs. The offline audit warns when `allowed-tools` is present.
+by default: pre-approval is client-specific and requires explicit trust review. If a target
+adapter requires it, add it only after reviewing the tool list against the skill's real needs.
+The offline audit warns when `allowed-tools` is present.
 
 ## Format validation is not a safety review
 
 The bundled validator checks format constraints (frontmatter, field types, name rules, body
 budgets). It does not inspect whether the skill's behavior matches its description, ships
 malware, or exfiltrates data. A passing strict validation means the skill is portable-spec
-conformant, not that it is safe. Inspect third-party skills before installing.
+conformant, not that it is safe.
 
-## Always-on instructions remain separate
-
-A skill with no discrete trigger should be an always-on instruction file (e.g. AGENTS.md), not
-a skill. If the honest description would be "use this on every task," it is not a skill. Do not
-ship miscategorized content as a skill.
+The spec is silent on security, but skills execute bundled scripts with the agent's permissions,
+and their instructions are processed at operator level. Treat any third-party skill like an
+unaudited dependency: inspect before installing, prefer trusted sources, and sandbox script
+execution.
 
 ## Do's and Don'ts
 
@@ -178,25 +174,35 @@ These consolidate the standard's authoring guidance and the most common failure 
 
 - Ground the skill in real expertise. Extract the reusable pattern from a hands-on task, or
   synthesize from real artifacts (runbooks, style guides, API specs, code-review comments,
-  version-control history, real failures).
+  version-control history, real failures). Asking a model to generate a skill from general
+  knowledge alone is the primary anti-pattern: it yields vague, generic procedure ("handle errors
+  appropriately", "follow best practices"), not the specific patterns that make a skill valuable.
 - Refine with real execution. Run the skill on real tasks; feed all results back, not just
   failures. One execute-then-revise pass noticeably improves quality.
 - Read execution traces, not just final outputs, to spot vague or inapplicable instructions, or
-  too many options with no default.
-- Add only what the agent lacks; omit what it knows. Ask of every line: would the agent get this
-  wrong without this instruction? If no, cut it.
-- Design coherent units of work that compose well, as you would scope a function.
+  too many options with no default. Simplify or remove instructions the traces show the agent
+  ignoring or wasting time on.
+- Add only what the agent lacks; omit what it knows (what a PDF is, how HTTP works, what a
+  migration does). Ask of every line: would the agent get this wrong without this instruction?
+  If no, cut it.
+- Design coherent units of work that compose well, as you would scope a function. Too narrow
+  forces several skills to co-load and risks conflicting instructions; too broad makes the skill
+  hard to trigger precisely (a skill that both queries and administers a database does too much).
 - Aim for moderate detail. Concise stepwise guidance with a working example beats exhaustive
-  documentation.
+  documentation: covering every edge case makes the agent struggle to find what is relevant and
+  pursue dead ends from inapplicable instructions. Often the agent's own judgment beats another
+  paragraph.
 - Keep `SKILL.md` under 500 lines and roughly 5000 tokens; move detail into `references/`.
 - Tell the agent when to load each reference file (for example, "Read references/api-errors.md
   if the API returns a non-200 status"), not a generic "see references/". Name the full
   skill-relative path, not just the filename.
 - Match specificity to fragility. Give freedom where multiple approaches are valid, and explain
   why; be prescriptive where operations are fragile or need a specific sequence.
-- Provide defaults, not menus. Pick a default tool or approach; mention alternatives briefly.
+- Provide defaults, not menus. Pick a default tool or approach; mention alternatives briefly as
+  an escape hatch, rather than listing equal options ("pypdf, pdfplumber, PyMuPDF, or pdf2image").
 - Favor procedures over declarations: teach how to approach a class of problems, not what to
-  produce for one instance.
+  produce for one instance ("join orders to customers on customer_id, filter region EMEA" is an
+  answer, not a reusable method).
 - Include a "Gotchas" section for environment-specific facts that defy reasonable assumptions.
   Keep gotchas in `SKILL.md` so the agent reads them before hitting the situation. When you
   correct an agent mistake, add it to gotchas.
@@ -204,11 +210,8 @@ These consolidate the standard's authoring guidance and the most common failure 
   ones).
 - Use checklists for multi-step workflows, validation loops (do, validate, fix, repeat), and
   plan-validate-execute for batch or destructive operations.
-- Bundle a tested script in `scripts/` when traces show the agent reinventing the same logic
-  each run.
-- Design scripts for non-interactive use, with helpful errors and structured output. See
-  `references/scripts.md` for the full rules on dependencies, idempotency, `--dry-run`, exit
-  codes, and output size.
+- Read `references/scripts.md` before bundling executable code; it owns when to bundle and the
+  script design checklist.
 - Validate with `skills-ref validate ./your-skill` (or the bundled validator) before
   distributing.
 - Test triggering with eval queries, run each several times, and use a train/validation split
@@ -218,32 +221,9 @@ These consolidate the standard's authoring guidance and the most common failure 
 
 ### Don't
 
-- Do not ask a model to generate a skill from general knowledge alone. The result is vague,
-  generic procedure ("handle errors appropriately", "follow best practices"), not the specific
-  patterns that make a skill valuable. This is the primary anti-pattern.
-- Do not explain what the agent already knows (what a PDF is, how HTTP works, what a migration
-  does).
-- Do not scope a skill too narrowly (it forces several skills to co-load and risks conflicting
-  instructions) or too broadly (it becomes hard to trigger precisely). A skill that both queries
-  and administers a database tries to do too much.
-- Do not over-document. Covering every edge case makes the agent struggle to find what is
-  relevant, and pursue dead ends from inapplicable instructions. Often the agent's own judgment
-  beats another paragraph.
-- Do not present many equal options ("you can use pypdf, pdfplumber, PyMuPDF, or pdf2image").
-  Give a clear default with an escape hatch.
-- Do not write specific-answer instructions ("join orders to customers on customer_id, filter
-  region EMEA") when you need a reusable method.
-- Do not bury gotchas in a reference file the agent may never load.
-- Do not use deeply nested reference chains; keep references one level deep from `SKILL.md`.
-- Do not write rigid ALWAYS/NEVER directives where reasoning-based instructions work better.
 - Do not let the description grow past the 512-character working ceiling without good reason,
   and never past the 1024-character hard limit. Do not overfit it by stuffing in specific
   keywords from failed eval queries; address the general category instead.
-- Do not write scripts with interactive prompts. Agents run in non-interactive shells; a
-  blocking prompt hangs forever.
-- Do not emit opaque errors ("Error: invalid input") or free-form output that is hard to parse.
-- Do not keep instructions the traces show the agent ignoring or wasting time on; simplify or
-  remove them.
 - Do not write a weak description ("Helps with PDFs"). Under-specification is the single most
   common reason a skill fails to trigger.
 - Do not treat a portability rule as a spec rule. A skill with a client-specific top-level field

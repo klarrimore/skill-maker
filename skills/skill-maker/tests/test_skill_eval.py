@@ -170,8 +170,8 @@ class TestSkillEvalIntegration(unittest.TestCase):
         shutil.rmtree(str(outside), ignore_errors=True)
 
 
-class TestAuditPortableResources(unittest.TestCase):
-    """Integration tests for portable-resource audit warnings in _audit_skill."""
+class _SkillFixtureMixin:
+    """Builds throwaway skill directories under a per-test temp dir."""
 
     def setUp(self):
         self.tmp_path = Path(tempfile.mkdtemp())
@@ -187,6 +187,10 @@ class TestAuditPortableResources(unittest.TestCase):
                 full.parent.mkdir(parents=True, exist_ok=True)
                 full.write_text(content)
         return skill_dir
+
+
+class TestAuditPortableResources(_SkillFixtureMixin, unittest.TestCase):
+    """Integration tests for portable-resource audit warnings in _audit_skill."""
 
     def test_clean_skill_no_resource_warnings(self):
         """A skill with all resources/scripts named in the body gets no resource findings."""
@@ -301,6 +305,83 @@ class TestAuditPortableResources(unittest.TestCase):
         # references/guide.md must still be flagged even though assets/guide.md is named.
         self.assertIn("resource.unaddressed.references/guide.md", finding_ids)
         self.assertNotIn("resource.unaddressed.assets/guide.md", finding_ids)
+
+
+class TestAuditDeadPointersAndToc(_SkillFixtureMixin, unittest.TestCase):
+    """Audit warnings for dead skill-relative pointers and long references without a TOC."""
+
+    def _findings(self, skill_dir, prefix):
+        return [f for f in _audit_skill(skill_dir)["findings"] if f["id"].startswith(prefix)]
+
+    def test_dead_pointer_in_body_is_flagged(self):
+        body = "---\nname: test-skill\ndescription: Test.\n---\nRun `scripts/missing.py` first.\n"
+        skill_dir = self._make_skill(body=body)
+        found = self._findings(skill_dir, "resource.dead-pointer.")
+        self.assertEqual(len(found), 1)
+        finding = found[0]
+        self.assertEqual(finding["id"], "resource.dead-pointer.SKILL.md:scripts/missing.py")
+        self.assertEqual(finding["severity"], "warning")
+        self.assertEqual(finding["status"], "open")
+        self.assertEqual(finding["path"], "SKILL.md")
+        self.assertIn("scripts/missing.py", finding["evidence"])
+        self.assertIn("line 5", finding["evidence"])
+        self.assertTrue(finding["fix"])
+
+    def test_dead_pointer_in_reference_is_flagged(self):
+        body = "---\nname: test-skill\ndescription: Test.\n---\nRead references/guide.md.\n"
+        skill_dir = self._make_skill(body=body, extra_files={
+            "references/guide.md": "# Guide\n\nRender with `scripts/render.py`.\n",
+        })
+        ids = {f["id"] for f in self._findings(skill_dir, "resource.dead-pointer.")}
+        self.assertEqual(ids, {"resource.dead-pointer.references/guide.md:scripts/render.py"})
+
+    def test_existing_paths_and_examples_are_not_flagged(self):
+        body = (
+            "---\nname: test-skill\ndescription: Test.\n---\n"
+            "Run `scripts/run.py`, then read references/guide.md.\n"
+            "Name the full path (e.g. `scripts/example.py`).\n"
+            "For example, \"Read references/api-errors.md if the call fails\".\n"
+            "The repo copy lives at skills/test-skill/scripts/elsewhere.py.\n"
+        )
+        skill_dir = self._make_skill(body=body, extra_files={
+            "scripts/run.py": "print('run')",
+            "references/guide.md": "# Guide\n",
+        })
+        self.assertEqual(self._findings(skill_dir, "resource.dead-pointer."), [])
+
+    def test_example_marker_wrapped_onto_previous_line_is_not_flagged(self):
+        body = (
+            "---\nname: test-skill\ndescription: Test.\n---\n"
+            "Tell the agent when to read each file (for\n"
+            "example, \"Read references/api-errors.md if the call fails\").\n"
+        )
+        skill_dir = self._make_skill(body=body)
+        self.assertEqual(self._findings(skill_dir, "resource.dead-pointer."), [])
+
+    def _long_reference(self, header, lines=320):
+        return header + "".join("line {}\n".format(i) for i in range(lines))
+
+    def test_long_reference_without_toc_is_flagged(self):
+        body = "---\nname: test-skill\ndescription: Test.\n---\nRead references/big.md.\n"
+        skill_dir = self._make_skill(body=body, extra_files={
+            "references/big.md": self._long_reference("# Big\n\n## First section\n"),
+        })
+        found = self._findings(skill_dir, "resource.missing-toc.")
+        self.assertEqual(len(found), 1)
+        finding = found[0]
+        self.assertEqual(finding["id"], "resource.missing-toc.references/big.md")
+        self.assertEqual(finding["severity"], "warning")
+        self.assertEqual(finding["path"], "references/big.md")
+        self.assertIn("323 lines", finding["evidence"])
+        self.assertTrue(finding["fix"])
+
+    def test_long_reference_with_toc_and_short_reference_are_not_flagged(self):
+        body = "---\nname: test-skill\ndescription: Test.\n---\nRead references/big.md and references/small.md.\n"
+        skill_dir = self._make_skill(body=body, extra_files={
+            "references/big.md": self._long_reference("# Big\n\n## Contents\n\n- [First](#first)\n"),
+            "references/small.md": self._long_reference("# Small\n", lines=250),
+        })
+        self.assertEqual(self._findings(skill_dir, "resource.missing-toc."), [])
 
 
 if __name__ == "__main__":
