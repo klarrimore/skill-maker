@@ -9,6 +9,7 @@
 - Stated judge calibration status once, in `evals/README.md`, with a table that `tests/test_evals_data.py` keeps in step with `judge_labels.json` (#12).
 - Rewrote `evals/failure-modes.md` to open with the catalogue: every "Caught by" cell now names a real expectation, rubric, or script and cites exactly the evals that map to it in `evals.json`, a Status column replaces the dated 2026-09-30 run narrative (now a pointer to the run summary), and "Keeping this current" ends with a done-condition that `tests/test_evals_data.py` checks; evals 1 and 4 gain the validator-success `regex` expectation for FM-4 (#13).
 - Gave each topic shared by `spec-reference.md` and `spec-provenance.md` one owner with a one-line pointer in the other, added a validator-checks-by-tier table that `tests/test_spec_references.py` keeps in step with `quick_validate.py`, and restated edit-history entries and prohibitions as present-tense targets (#14).
+- Cited `grade_artifacts.py` in `evals/failure-modes.md` as the standalone check on a produced skill, dropped the strict-severity column from the `spec-provenance.md` tier table in favour of a pointer to `spec-reference.md`, gave the body-budget rows a spec-recommendation source, pointed `authoring-guide.md` at the import-mode rules instead of restating them, and shared one Markdown table parser across the reference and eval tests (#13, #14).
 
 ## [1.14.0] - 2026-10-31
 

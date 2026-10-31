@@ -39,34 +39,35 @@ A skill can pass the spec and fail hardening.
 
 ## Bundled validator checks by tier
 
-Each check the bundled validator performs carries exactly one tier. Severity is for strict
-mode; how import mode treats each check is in `spec-reference.md` "Validation: strict versus
-import". Strict mode enforces all three tiers, so a strict pass means spec-conformant,
-portable, and hardened.
+Each check the bundled validator performs carries exactly one tier. Strict mode enforces all
+three tiers, so a strict pass means spec-conformant, portable, and hardened. Which checks are
+errors or warnings in each mode is in `spec-reference.md` "Validation: strict versus import".
+The 500-line and 5000-token checks are hardening because the spec states those budgets as
+recommendations, not requirements, so checking them is this validator's choice.
 
-| Check | Tier | Strict severity | Source |
-| --- | --- | --- | --- |
-| `SKILL.md` exists | Spec constraint | Error | Spec directory structure |
-| Frontmatter is a YAML mapping | Spec constraint | Error | Spec: YAML frontmatter, then Markdown |
-| Exactly one `SKILL.md` | Skill-maker hardening | Error | House rule: one entry point per packaged skill |
-| `name` present and a non-empty string | Spec constraint | Error | Spec field table |
-| `name` character set and hyphens | Spec constraint | Error | Spec field table (Unicode reading: see `spec-reference.md`) |
-| `name` at most 64 characters | Spec constraint | Error | Spec field table |
-| `name` matches the directory | Spec constraint | Error | Spec field table |
-| `description` present and a non-empty string | Spec constraint | Error | Spec field table |
-| `description` at most 1024 characters | Spec constraint | Error | Spec field table |
-| `license` is a string | Spec constraint | Error | Spec field table |
-| `allowed-tools` is a string | Spec constraint | Error | Spec field table (space-separated string) |
-| `compatibility` a string of at most 500 characters | Spec constraint | Error | Spec field table (upper bound only) |
-| `metadata` maps strings to strings | Spec constraint | Error | Spec field table |
-| Only the six spec fields | Portability rule | Error | Spec places extras in `metadata`; `skills-ref` rejects them |
-| No angle brackets in `description` | Skill-maker hardening | Error | Inherited authoring-tool check (see below) |
-| No em dash in `SKILL.md` | Skill-maker hardening | Error | House style |
-| Body under 500 lines | Skill-maker hardening | Warning | Spec recommendation that `skills-ref` leaves unchecked |
-| Body under about 5000 tokens | Skill-maker hardening | Warning | Spec recommendation that `skills-ref` leaves unchecked |
-| Body under 8000 bytes (Codex) | Skill-maker hardening | Warning | Codex default body truncation, as of 2026-09-30 |
-| `description` under 973 characters | Skill-maker hardening | Warning | Margin under the spec's 1024 limit |
-| ASCII-only `name` | Skill-maker hardening | Warning | One client's authoring validator accepts only `^[a-z0-9-]+$` |
+| Check | Tier | Source |
+| --- | --- | --- |
+| `SKILL.md` exists | Spec constraint | Spec directory structure |
+| Frontmatter is a YAML mapping | Spec constraint | Spec: YAML frontmatter, then Markdown |
+| Exactly one `SKILL.md` | Skill-maker hardening | House rule: one entry point per packaged skill |
+| `name` present and a non-empty string | Spec constraint | Spec field table |
+| `name` character set and hyphens | Spec constraint | Spec field table (Unicode reading: see `spec-reference.md`) |
+| `name` at most 64 characters | Spec constraint | Spec field table |
+| `name` matches the directory | Spec constraint | Spec field table |
+| `description` present and a non-empty string | Spec constraint | Spec field table |
+| `description` at most 1024 characters | Spec constraint | Spec field table |
+| `license` is a string | Spec constraint | Spec field table |
+| `allowed-tools` is a string | Spec constraint | Spec field table (space-separated string) |
+| `compatibility` a string of at most 500 characters | Spec constraint | Spec field table (upper bound only) |
+| `metadata` maps strings to strings | Spec constraint | Spec field table |
+| Only the six spec fields | Portability rule | Spec places extras in `metadata`; `skills-ref` rejects them |
+| No angle brackets in `description` | Skill-maker hardening | Inherited authoring-tool check (see below) |
+| No em dash in `SKILL.md` | Skill-maker hardening | House style |
+| Body under 500 lines | Skill-maker hardening | Spec recommendation, not a requirement |
+| Body under about 5000 tokens | Skill-maker hardening | Spec recommendation, not a requirement |
+| Body under 8000 bytes (Codex) | Skill-maker hardening | Codex client behavior (`spec-reference.md` "Body content") |
+| `description` under 973 characters | Skill-maker hardening | Margin under the spec's 1024 limit |
+| ASCII-only `name` | Skill-maker hardening | One client's authoring validator accepts only `^[a-z0-9-]+$` |
 
 ## Versioning
 

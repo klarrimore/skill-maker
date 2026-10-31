@@ -3,15 +3,15 @@
 The concrete ways skill-maker's instructions fail in practice, and what catches each. This is the
 error-analysis record behind `evals.json`: expectations are written against these failure modes,
 not borrowed generic qualities. Status is from the latest trace review, `runs/2026-09-30/summary.md`.
-Status values: **Observed**
-(a real instance occurred and the catch worked), **Confirmed absent** (the review checked for it and
-it did not occur), **Not exercised** (no trace produced it), **Untested** (the catch never ran).
+Status values: **Observed** (a real instance occurred and the catch worked), **Confirmed absent**
+(the review checked for it and it did not occur), **Not exercised** (no trace produced it),
+**Untested** (the catch never ran).
 
 | ID | Failure mode | Caught by | Status |
 | --- | --- | --- | --- |
-| FM-1 | Emits platform-locked frontmatter, a client-specific field (`context`, `model`, `user-invocable`, scripts sidecar) instead of the six standard fields | Eval 1 via `grade_artifacts.py` (recognized-fields check) | Not exercised |
-| FM-2 | Invalid frontmatter: non-lowercase/kebab name, name that does not match the directory, or description over 1024 chars (spec violations); plus angle brackets, which the bundled validator rejects as a skill-maker hardening measure (the spec is silent and `skills-ref` does not check them) | Eval 1 via `grade_artifacts.py` (name and description checks); Eval 2 regex expectation on the validator's success line; `quick_validate` | Observed |
-| FM-3 | Bloats `SKILL.md` with depth that belongs in `references/` instead of disclosing it behind a read-this-when pointer | Eval 1 via `grade_artifacts.py` (500-line body budget check); `quick_validate` body-budget warning | Not exercised |
+| FM-1 | Emits platform-locked frontmatter, a client-specific field (`context`, `model`, `user-invocable`, scripts sidecar) instead of the six standard fields | Eval 1 regex expectation on the validator's success line (strict mode rejects fields outside the six); `grade_artifacts.py` (run on a produced skill) recognized-fields check | Not exercised |
+| FM-2 | Invalid frontmatter: non-lowercase/kebab name, name that does not match the directory, or description over 1024 chars (spec violations); plus angle brackets, which the bundled validator rejects as a skill-maker hardening measure (the spec is silent and `skills-ref` does not check them) | Eval 1, Eval 2 regex expectation on the validator's success line; `grade_artifacts.py` (run on a produced skill) name and description checks; `quick_validate` | Observed |
+| FM-3 | Bloats `SKILL.md` with depth that belongs in `references/` instead of disclosing it behind a read-this-when pointer | Eval 1 trace review (body length of the produced skill); `grade_artifacts.py` (run on a produced skill) 500-line body budget check; `quick_validate` body-budget warning | Not exercised |
 | FM-4 | Skips validation before handoff | Eval 1, Eval 2, Eval 4, Eval 6 regex expectation on the validator's success line ("Skill is valid!") | Not exercised |
 | FM-5 | Invents a generic procedure from general knowledge ("handle errors appropriately") instead of extracting real expertise | Eval 1 judge `judges/generic-procedure-detection.md` | Not exercised |
 | FM-6 | Writes a description that will not trigger: vague, missing the when-to-use half, not pushy about indirect contexts | Eval 3 trigger loop over `trigger_queries.json` | Not exercised |
