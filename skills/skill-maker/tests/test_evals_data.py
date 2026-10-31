@@ -7,6 +7,7 @@ from pathlib import Path
 from evals.grade_artifacts import grade
 from scripts.eval_models import EvalSchemaError, load_eval_suite, load_trigger_queries
 from scripts.quick_validate import validate_skill
+from scripts.utils import parse_frontmatter
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 EVALS_DIR = SKILL_ROOT / "evals"
@@ -136,10 +137,8 @@ class TestSkillItselfIsGradeable(unittest.TestCase):
         self.assertTrue(all(item["passed"] for item in results), results)
 
     def test_description_leads_with_the_action_and_covers_optimization(self):
-        import yaml
-
         text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
-        description = yaml.safe_load(text.split("---")[1])["description"]
+        description = parse_frontmatter(text)[0]["description"]
         self.assertLessEqual(len(description), 512)
         self.assertTrue(description.startswith("Create"), description[:40])
         self.assertIn("token cost", description)

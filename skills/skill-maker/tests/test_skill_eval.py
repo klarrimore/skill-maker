@@ -170,8 +170,8 @@ class TestSkillEvalIntegration(unittest.TestCase):
         shutil.rmtree(str(outside), ignore_errors=True)
 
 
-class TestAuditPortableResources(unittest.TestCase):
-    """Integration tests for portable-resource audit warnings in _audit_skill."""
+class _SkillFixtureMixin:
+    """Builds throwaway skill directories under a per-test temp dir."""
 
     def setUp(self):
         self.tmp_path = Path(tempfile.mkdtemp())
@@ -187,6 +187,10 @@ class TestAuditPortableResources(unittest.TestCase):
                 full.parent.mkdir(parents=True, exist_ok=True)
                 full.write_text(content)
         return skill_dir
+
+
+class TestAuditPortableResources(_SkillFixtureMixin, unittest.TestCase):
+    """Integration tests for portable-resource audit warnings in _audit_skill."""
 
     def test_clean_skill_no_resource_warnings(self):
         """A skill with all resources/scripts named in the body gets no resource findings."""
@@ -303,11 +307,8 @@ class TestAuditPortableResources(unittest.TestCase):
         self.assertNotIn("resource.unaddressed.assets/guide.md", finding_ids)
 
 
-class TestAuditDeadPointersAndToc(unittest.TestCase):
+class TestAuditDeadPointersAndToc(_SkillFixtureMixin, unittest.TestCase):
     """Audit warnings for dead skill-relative pointers and long references without a TOC."""
-
-    setUp = TestAuditPortableResources.setUp
-    _make_skill = TestAuditPortableResources._make_skill
 
     def _findings(self, skill_dir, prefix):
         return [f for f in _audit_skill(skill_dir)["findings"] if f["id"].startswith(prefix)]

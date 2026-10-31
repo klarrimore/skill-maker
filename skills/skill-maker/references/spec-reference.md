@@ -275,7 +275,5 @@ never authorizes packaging or installation.
 - The `.skill` zip, `gh skill`, and `npx skills add <owner/repo>` are ecosystem and host
   conventions. No agentskills.io primary source documents them. Treat them as tool-specific,
   not as standard behavior.
-
-## Security posture
-
-The spec is silent on security; see "Format validation is not a safety review" in the guide.
+- The spec is silent on security, and validation is not a safety review: see
+  "Format validation is not a safety review" in `references/authoring-guide.md`.

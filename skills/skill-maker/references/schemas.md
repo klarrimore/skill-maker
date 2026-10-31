@@ -362,7 +362,7 @@ Output from Benchmark mode. Located at `benchmarks/<timestamp>/benchmark.json`.
 
   "notes": [
     "Assertion 'Output is a PDF file' passes 100% in both configurations - may not differentiate skill value",
-    "Eval 3 shows high variance (50% ± 40%) - may be flaky or model-dependent",
+    "Eval <id> shows high variance (50% ± 40%) - may be flaky or model-dependent",
     "Without-skill runs consistently fail on table extraction expectations",
     "Skill adds 13s average execution time but improves pass rate by 50%"
   ]
