@@ -38,12 +38,7 @@ promote only a copied winner. The original directory remains byte-identical.
 
 ## Revision isolation
 
-Held-out isolation during the sandboxed improvement loop covers request payloads (held-out
-prompts, labels, and results are never sent to `revise`) and ancestor reachability from all
-revision adapter paths (temporary staging uses a system temporary directory outside the
-workspace). Temporary staging is not an OS security sandbox against an adapter that independently
-scans arbitrary filesystem roots. The stored revision request persists sanitized `$ISOLATED/...`
-paths rather than live temporary or persistent filesystem paths.
+Revision isolation is defined in `references/evaluation.md` (Sandboxed improvement).
 
 ## Command checks and least privilege
 

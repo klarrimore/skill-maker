@@ -30,8 +30,8 @@ a different tool. For a PDF extraction skill, a near-miss negative would be "cre
 (creation, not extraction). Avoid obviously irrelevant negatives that the agent would never
 confuse.
 
-Hold out roughly 40 percent of the queries (typically 8 of 20). The evaluator never exposes
-held-out labels, prompts, or results to revision adapters. Run three repetitions per query
+Hold out roughly 40 percent of the queries (typically 8 of 20); revision isolation for the
+held-out split follows `references/evaluation.md`. Run three repetitions per query
 so the trigger rate (≥0.5 = pass) is statistically meaningful.
 
 Run fresh sanity queries (not from the training or held-out sets) after every edit to detect
