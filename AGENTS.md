@@ -50,4 +50,4 @@ Default vocabulary: the five canonical roles, each label string equal to its nam
 
 ### Domain docs
 
-Single-context layout: `CONTEXT.md` plus `docs/adr/` at the repo root. Neither exists yet — `/domain-modeling` creates them lazily when a term or decision actually gets resolved. See `docs/agents/domain.md`.
+Single-context layout: `GLOSSARY.md` plus `docs/adr/` at the repo root. Neither exists yet — `/domain-modeling` creates them lazily when a term or decision actually gets resolved. See `docs/agents/domain.md`.
