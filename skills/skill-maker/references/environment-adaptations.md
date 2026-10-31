@@ -8,7 +8,7 @@ measurements or weakening the safety boundary.
 Use the manual path: copy each input into a workspace, read the skill, run the prompt, save the
 final output and transcript, grade deterministic expectations, and show paired results to the
 human. Skip baseline benchmarking when there is no independent baseline. Do not send a revision
-request or promote a candidate without an adapter that can actually write a workspace-owned
+request or promote a candidate without an adapter that can actually write the
 candidate.
 
 ## No subagents
@@ -33,7 +33,7 @@ source-development concerns and are never copied into the target artifact.
 ## Read-only installed skills
 
 Never point an adapter output or revision destination at an installed skill. Copy it to a
-workspace-owned candidate whose directory keeps the original skill name, validate there, and
+candidate in your workspace whose directory keeps the original skill name, validate there, and
 promote only a copied winner. The original directory remains byte-identical.
 
 ## Revision isolation

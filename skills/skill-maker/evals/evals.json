@@ -19,7 +19,7 @@
       "name": "make-spec-compliant",
       "split": "held_out",
       "prompt": "I downloaded this skill but it won't load and I think the SKILL.md is malformed. The copy at evals/files/broken-skill/SKILL.md is read-only, so work on your own copy. Make it spec-compliant and confirm it actually validates.",
-      "expected_output": "A writable copy is repaired and validated while the broken source fixture remains unchanged.",
+      "expected_output": "A candidate copy is repaired and validated while the broken source fixture remains unchanged.",
       "files": ["evals/files/broken-skill/SKILL.md"],
       "failure_modes": ["FM-2", "FM-8", "FM-11", "FM-15"],
       "expectations": [
@@ -43,7 +43,7 @@
       "name": "improve-installed-skill",
       "split": "train",
       "prompt": "I have an installed skill called `standup-summary` that I want to improve. Its instructions are thin and it misses the on-call rotation summary entirely. The install is read-only under ~/.agents/skills/standup-summary. Can you improve it and hand me back the updated folder?",
-      "expected_output": "A writable same-name copy is improved narrowly and re-validated.",
+      "expected_output": "A same-name candidate is improved narrowly and re-validated.",
       "files": ["evals/files/standup-summary/SKILL.md"],
       "failure_modes": ["FM-4", "FM-8", "FM-13", "FM-14"],
       "expectations": [

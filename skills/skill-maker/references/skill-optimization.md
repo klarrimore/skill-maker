@@ -14,8 +14,8 @@ the execution/selection contract lives in `evaluation.md`.
    (e.g. "reload of unrelated reference on 4 of 5 train runs").
 3. **Record one hypothesis** stating the change and the observable effect. A hypothesis is a
    testable claim, not a guaranteed gain or a requirement of the standard.
-4. **Make a small candidate change on a writable copy.** Never edit the source fixture or an
-   installed read-only directory.
+4. **Make a small change on the candidate** (the workspace copy defined in `SKILL.md`), leaving
+   the source fixture and any installed directory byte-identical.
 5. **Compare paired runs** (with-change vs without-change) on identical cases, then retain
    only improvements supported by evidence. Report unknown measurements as unknown, never
    zero.
@@ -84,7 +84,7 @@ Fill in every field; leave "unknown" where no measurement exists. Never fabricat
 
 - **Bottleneck:** the named observation justifying the work.
 - **Hypothesis:** the change and the expected observable effect.
-- **Change:** the actual edit, on a writable copy.
+- **Change:** the actual edit, on the candidate.
 - **Train evidence:** paired before/after on train cases.
 - **Held-out confirmation:** fresh cases never used during iteration.
 - **Quality/cost observations:** tokens, duration, tool calls where supplied; unknown if not.
