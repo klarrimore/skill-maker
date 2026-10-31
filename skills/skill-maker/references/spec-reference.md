@@ -21,9 +21,8 @@ skill-name/
 \-- ...               # Any additional files or directories
 ```
 
-- `scripts/` holds executable code the agent can run. Scripts should be self-contained or
-  clearly document dependencies, include helpful error messages, and handle edge cases.
-  Supported languages depend on the agent; Python, Bash, and JavaScript are common.
+- `scripts/` holds executable code the agent can run; `references/scripts.md` owns how to
+  write it.
 - `references/` holds documentation the agent reads when needed (for example `REFERENCE.md`,
   `FORMS.md`, or domain files like `finance.md`). Keep each reference file focused: agents load
   them on demand, so smaller files cost less context.
@@ -31,9 +30,7 @@ skill-name/
 
 ## Frontmatter schema (the full field set)
 
-The spec defines six fields; two are required. The bundled validator rejects any top-level field
-outside these six. A skill that adds a top-level client extension is still spec-conformant but
-not portable.
+The spec defines six fields; two are required.
 
 | Field | Required | Constraint |
 | --- | --- | --- |
@@ -72,7 +69,7 @@ metadata:
 - Lowercase alphanumeric and hyphens (`-`). The spec is ambiguous: the prose says "unicode
   lowercase alphanumeric characters", but its parenthetical says `a-z, 0-9`. The reference
   validator normalizes NFKC and accepts any lowercase `isalnum()` character, so `技能`,
-  `мой-навык`, and `café` are valid there. State which validator you follow. For maximum
+  `мой-навык`, and `café` are valid there. For maximum
   cross-client portability, **prefer ASCII-only names** regardless: at least one major client's
   own authoring validator accepts only `^[a-z0-9-]+$` and will reject a Unicode name this
   skill's own validator (and `skills-ref`) accepts. The bundled validator's strict mode emits a
@@ -89,12 +86,12 @@ metadata:
   do enforce it.
 - Some clients reserve certain words (often their own product or vendor name) and reject a name
   containing one on upload. This is a client upload convention, not part of the standard. The
-  standard defines no reserved-word list, so check the client you target. This is confirmed,
-  not hypothetical: Claude's own platform documentation states outright that `name` cannot
-  contain the substrings "anthropic" or "claude", and Claude Code separately reserves the
-  skill-folder names `synced` and `anthropic-skills` for its own synced-skills mechanism. As a
-  portable default, avoid vendor or brand names in `name` (see also
-  `references/authoring-guide.md` for the same rule applied to a skill's body text).
+  standard defines no reserved-word list, so check the client you target. Claude's platform
+  documentation states that `name` cannot contain the substrings "anthropic" or "claude",
+  and Claude Code separately reserves the skill-folder names `synced` and `anthropic-skills`
+  for its own synced-skills mechanism. As a portable default, keep vendor and brand names out
+  of `name` (see also `references/authoring-guide.md` for the same rule applied to a skill's
+  body text).
 
 Valid: `pdf-processing`, `data-analysis`, `code-review`.
 Invalid: `PDF-Processing` (uppercase), `-pdf` (leading hyphen), `pdf--processing` (double
@@ -109,15 +106,14 @@ hyphen).
   task.
 - State both what the skill does and when to use it.
 - Include specific keywords that help an agent recognize relevant tasks.
-- The spec is silent on angle brackets (`<`, `>`), and the official `skills-ref` validator does
-  not check them. The bundled validator rejects them as hardening, inherited from the same
-  authoring-tool convention that both Anthropic's and OpenAI's own official skill-authoring
-  tools apply (see `references/spec-provenance.md` for the detail), since some clients may
-  sanitize markup. This is not a format constraint, and no runtime is known to enforce it.
-- Do not approach the 1024 ceiling by keyword-stuffing. A description within about 5% of it
-  (roughly 973+ characters) is a maintenance trap: the next trigger-phrase addition silently
-  breaches it. Re-check the length after every edit, not only at first authoring. An edit that
-  grows the description is the most common way a previously compliant skill goes over.
+- Keep angle brackets (`<`, `>`) out of the description. The bundled validator rejects them
+  as hardening because some clients may sanitize markup; the spec and `skills-ref` accept
+  them (lineage: `references/spec-provenance.md`).
+- Keep the description well clear of the 1024 ceiling, with keywords chosen, not stuffed. A
+  description within about 5% of it (roughly 973+ characters) is a maintenance trap: the next
+  trigger-phrase addition silently breaches it. Re-check the length after every edit, not only
+  at first authoring. An edit that grows the description is the most common way a previously
+  compliant skill goes over.
 
 Good: "Extracts text and tables from PDF files, fills PDF forms, and merges multiple PDFs.
 Use when working with PDF documents or when the user mentions PDFs, forms, or document
@@ -126,8 +122,8 @@ extraction." Poor: "Helps with PDFs."
 ## compatibility rules
 
 - 1 to 500 characters if present.
-- The reference validator enforces only the upper bound; an empty string passes it. So
-  "validate before distributing" is not a guarantee of the minimum.
+- Omit the field rather than leaving it empty: both `skills-ref` and the bundled validator
+  enforce only the upper bound, so an empty string passes them.
 - Include only when real environment requirements exist.
 - A portability gotcha specific to Codex: its own bundled skill-authoring validator (not its
   runtime loader, which ignores unrecognized frontmatter keys entirely) allow-lists only five
@@ -149,14 +145,10 @@ material into referenced files. Recommended ingredients: step-by-step instructio
 inputs and outputs, and common edge cases. Treat the 5000-token figure as an upper bound, not a
 target: as of 2026-09-30, Codex hard-truncates a selected skill's body at roughly 8000 bytes
 (about 2000 tokens) in its default configuration, well under half the spec's own
-recommendation, silently cutting the body off mid-instruction rather than erroring. Named
-here because the number is concrete and citable, not because every client is assumed to
-behave the same way.
+recommendation, silently cutting the body off mid-instruction rather than erroring.
 
-When referencing other files, use relative paths from the skill root and keep references one
-level deep. Avoid deeply nested reference chains. Tell the agent when to read each file (for
-example, "Read references/api-errors.md if the API returns a non-200 status"), not just that
-the file exists.
+Point to other files as the **Draft** step of `SKILL.md` "Create a new skill" describes: one
+line per file with its purpose and when to read it, one level deep.
 
 ## Progressive disclosure (how loading works)
 
@@ -169,8 +161,9 @@ Agents pull in detail only as a task calls for it, in three tiers:
 | 3. Resources | Files under `scripts/`, `references/`, `assets/` | Only when the instructions reference them | Varies |
 
 Design consequence: the `description` alone decides whether tier 2 ever loads, so it carries the
-entire triggering burden. Bundled resources are effectively unlimited because they load lazily;
-do not fear large reference files, fear a bloated `SKILL.md`.
+entire triggering burden. Tier 3 costs nothing until the agent reads a file, so keep
+`SKILL.md` lean and move detail into focused reference files, structured as
+`references/authoring-guide.md` describes.
 
 ## Portable vs platform-locked
 
@@ -194,8 +187,8 @@ deliberate platform-lock in `compatibility` so users are not surprised.
 
 Host extensions (client-specific frontmatter fields, install paths, plugin manifests, hosted
 skill IDs, marketplace metadata) are adapter concerns, not portable schema. They belong in
-target-specific contracts outside the canonical artifact. Do not invent a host schema when no
-target was requested.
+target-specific contracts outside the canonical artifact. Add one only when a target was
+requested.
 
 ## Portability operations
 
@@ -204,7 +197,7 @@ file locations differ. Keep a skill portable by assuming the least-capable runti
 client-specific machinery.
 
 - Runtime varies. Some agent runtimes have no network access and cannot install packages at run
-  time. Do not assume either is available. Prefer inline dependency declarations for scripts
+  time. Write for a runtime with neither: prefer inline dependency declarations for scripts
   (see `references/scripts.md`), and make scripts degrade gracefully when a capability is absent.
 - The folder is the portable unit of distribution. Plugin and marketplace packaging formats are
   client-specific and mutually incompatible. To reach more than one client, ship the skill as a
@@ -213,10 +206,6 @@ client-specific machinery.
   mechanism, note that its file format is not portable the way `SKILL.md` is; `AGENTS.md` is the
   cross-tool convention, and some clients read their own equivalent instead. A skill is portable
   to every skills-compatible client; an always-on file is not.
-- Any frontmatter field outside the six defined fields is a client extension. A top-level
-  extension keeps the skill spec-conformant but breaks portability, as do client-specific
-  sidecar files. Avoid them unless you intend single-client behavior. If you use one, state it
-  in `compatibility`.
 
 ## Directory placement (convention, not spec)
 
@@ -230,12 +219,8 @@ cross-client convention:
 | User | `~/.<client>/skills/` | The client's native location |
 | User | `~/.agents/skills/` | Cross-client interoperability |
 
-`~/.agents/skills/` and a repo-local `.agents/skills/` are deliberately this skill's own
-installer defaults (`scripts/install_skill.py`). At least one major client's own source code
-calls its older, product-specific per-user skills path deprecated (kept only for backward
-compatibility), even though that same client's own bundled skill-authoring tool still tells
-authors to write to the old path, an inconsistency in that client's own tooling, not a
-reason to prefer the old path here.
+`~/.agents/skills/` and a repo-local `.agents/skills/` are this skill's own installer
+defaults (`scripts/install_skill.py`).
 
 Discovery scans both project and user scope. `.agents/skills/` is the cross-client convention;
 some clients also read `.claude/skills/` and other paths. The client guide calls
@@ -244,23 +229,24 @@ across existing implementations, but at least two major clients do not actually 
 one reverses the precedence for the personal/project pair (and adds tiers, such as an
 enterprise scope, the standard does not define), and another does not override at all:
 same-named skills from different scopes coexist, and a bare by-name mention only resolves
-when the name is unambiguous, silently failing to select anything otherwise. Do not design a
-skill's naming or distribution around any single collision rule; choose a name unlikely to
-collide with a system-bundled skill or another author's skill, and expect a collision to
-surface as ambiguity, not a predictable winner. The client guide recommends gating
-project-level loading on a trust check, because project skills may be untrusted.
+when the name is unambiguous, silently failing to select anything otherwise. Choose a name
+unlikely to collide with a system-bundled skill or another author's skill, and expect a
+collision to surface as ambiguity, not a predictable winner. The client guide recommends
+gating project-level loading on a trust check, because project skills may be untrusted.
 
 ## Validation: strict versus import
 
-The bundled validator (`scripts/quick_validate.py`) has two modes:
+The bundled validator (`scripts/quick_validate.py`) has two modes. Each check and its
+authority tier is in `references/spec-provenance.md` "Bundled validator checks by tier".
 
-- **Strict** (default): portable-spec validation used by packaging and installation. Errors are
-  portability violations (missing fields, invalid names, client extensions, angle brackets, em
-  dash, multiple SKILL.md files). A skill must pass strict mode to be packaged or installed.
-- **Import**: read-only compatibility inspection for an existing client-specific skill. Only
-  fatal structural issues (missing SKILL.md, unparseable YAML, missing or empty description) are
-  errors. Portability violations (client extensions, name mismatches, angle brackets, em dash)
-  are warnings so the skill can be examined before conversion.
+- **Strict** (default): conformance validation used by packaging and installation. The
+  body-budget, description-margin, and ASCII-name checks are warnings; every other check is
+  an error. A skill must pass strict mode to be packaged or installed.
+- **Import**: read-only inspection of an existing client-specific skill. Errors are a missing
+  or unreadable SKILL.md, frontmatter that is not a YAML mapping, and a `description` that is
+  missing, not a string, empty, or over 1024 characters. Every other strict-mode error is a
+  warning, so the skill can be examined before conversion. An import pass asserts no
+  authority tier: it is triage for whether the skill is worth converting.
 
 A skill that passes import mode but fails strict mode must be explicitly converted before it can
 be packaged: copy the skill, resolve warnings, and pass strict validation. Import-mode validity
@@ -268,12 +254,9 @@ never authorizes packaging or installation.
 
 ## Validation and distribution tooling
 
-- Reference validator: `skills-ref validate ./your-skill`. This is the standard's demonstration
-  and reference library, not a production SDK, and code contributions to it are currently
-  closed. It exposes `validate`, `read-properties`, and `to-prompt`.
+- Reference validator: `skills-ref validate ./your-skill` (status: `references/spec-provenance.md`).
 - The folder is the unit of distribution; source-control it.
-- The `.skill` zip, `gh skill`, and `npx skills add <owner/repo>` are ecosystem and host
-  conventions. No agentskills.io primary source documents them. Treat them as tool-specific,
-  not as standard behavior.
+- The `.skill` zip, `gh skill`, and `npx skills add <owner/repo>` are tool-specific (sources:
+  `references/spec-provenance.md`).
 - The spec is silent on security, and validation is not a safety review: see
   "Format validation is not a safety review" in `references/authoring-guide.md`.
