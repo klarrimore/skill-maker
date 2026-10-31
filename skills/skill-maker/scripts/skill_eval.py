@@ -75,6 +75,85 @@ def _frontmatter(skill_dir: Path) -> Dict[str, Any]:
     return frontmatter
 
 
+# A skill-relative pointer: scripts/, references/ or assets/ followed by a path that
+# ends in a word character (so trailing punctuation is dropped). The lookbehind skips
+# paths that are part of a longer path, such as skills/<name>/scripts/x.py.
+_POINTER_RE = re.compile(r"(?<![\w./-])((?:scripts|references|assets)/[A-Za-z0-9_./-]*[A-Za-z0-9_])")
+# Lines that illustrate a hypothetical path rather than point at a bundled file.
+# The marker may wrap from the previous line ("(for" / "example, ..."), so the check
+# runs over the previous line joined to the current one.
+_EXAMPLE_LINE_RE = re.compile(r"\be\.g\.|\bfor\s+example\b", re.IGNORECASE)
+
+
+def _markdown_lines(path: Path, skip_frontmatter: bool) -> List[Tuple[int, str]]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    start = 0
+    if skip_frontmatter and lines and lines[0].strip() == "---":
+        for index in range(1, len(lines)):
+            if lines[index].strip() == "---":
+                start = index + 1
+                break
+    return [(number + 1, lines[number]) for number in range(start, len(lines))]
+
+
+def _dead_pointer_findings(skill_dir: Path) -> List[Dict[str, Any]]:
+    """Warn when SKILL.md or a bundled reference names a skill-relative path that is missing."""
+    sources = [skill_dir / "SKILL.md"] + sorted((skill_dir / "references").rglob("*.md"))
+    findings: List[Dict[str, Any]] = []
+    seen = set()
+    for source in sources:
+        if not source.is_file():
+            continue
+        source_rel = source.relative_to(skill_dir).as_posix()
+        previous = ""
+        for number, line in _markdown_lines(source, skip_frontmatter=source_rel == "SKILL.md"):
+            context, previous = previous + " " + line, line
+            if _EXAMPLE_LINE_RE.search(context):
+                continue
+            for match in _POINTER_RE.finditer(line):
+                target = match.group(1)
+                finding_id = "resource.dead-pointer.{}:{}".format(source_rel, target)
+                if finding_id in seen or (skill_dir / target).exists():
+                    continue
+                seen.add(finding_id)
+                findings.append(_finding(
+                    finding_id, "warning", "advisory", "open", source_rel,
+                    "{} line {} names '{}', which does not exist in the skill.".format(source_rel, number, target),
+                    "Correct the path, add the missing file, or remove the pointer. "
+                    "Lines that say 'e.g.' or 'for example' are treated as illustrations and skipped.",
+                ))
+    return findings
+
+
+# References longer than this need a table of contents near the top so an agent can
+# jump to the section it needs instead of reading the whole file.
+_TOC_LINE_THRESHOLD = 300
+# How far from the top a table-of-contents heading may appear.
+_TOC_SEARCH_LINES = 40
+_TOC_HEADING_RE = re.compile(r"^#{1,6}\s+.*\bcontents\b", re.IGNORECASE)
+
+
+def _missing_toc_findings(skill_dir: Path) -> List[Dict[str, Any]]:
+    """Warn when a bundled reference is long but has no table of contents near the top."""
+    findings: List[Dict[str, Any]] = []
+    for source in sorted((skill_dir / "references").rglob("*.md")):
+        if not source.is_file():
+            continue
+        lines = source.read_text(encoding="utf-8").splitlines()
+        if len(lines) <= _TOC_LINE_THRESHOLD:
+            continue
+        if any(_TOC_HEADING_RE.match(line) for line in lines[:_TOC_SEARCH_LINES]):
+            continue
+        rel = source.relative_to(skill_dir).as_posix()
+        findings.append(_finding(
+            "resource.missing-toc.{}".format(rel), "warning", "advisory", "open", rel,
+            "{} has {} lines (over {}) and no table of contents in its first {} lines.".format(
+                rel, len(lines), _TOC_LINE_THRESHOLD, _TOC_SEARCH_LINES),
+            "Add a '## Contents' heading listing the sections near the top, or split the file.",
+        ))
+    return findings
+
+
 def _audit_skill(skill_dir: Path) -> Dict[str, Any]:
     """Return a stable audit report without invoking any model or command."""
     skill_dir = Path(skill_dir).resolve()
@@ -269,6 +348,9 @@ def _audit_skill(skill_dir: Path) -> Dict[str, Any]:
                     f"Resource '{posix}' is packaged but not named in SKILL.md.",
                     "Add an explicit 'read/use this when …' pointer in SKILL.md.",
                 ))
+
+    findings.extend(_dead_pointer_findings(skill_dir))
+    findings.extend(_missing_toc_findings(skill_dir))
 
     errors = sum(1 for item in findings if item["severity"] == "error" and item["status"] == "open")
     warnings = sum(1 for item in findings if item["severity"] == "warning" and item["status"] == "open")
