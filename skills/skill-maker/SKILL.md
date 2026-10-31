@@ -148,7 +148,7 @@ Import `scripts/utils.py` for shared helpers (`parse_frontmatter`,
 `should_exclude`, `walk_skill`) when writing custom evaluation or
 packaging tools.
 
-The offline audit (`python -m scripts.skill_eval audit`) now includes
+The offline audit (`python -m scripts.skill_eval audit`) includes
 progressive-disclosure and portable-resource warnings:
 - `skill.allowed-tools`: frontmatter carries the experimental pre-approval field.
 - `resource.unaddressed.<path>`: a packaged reference or asset not named in

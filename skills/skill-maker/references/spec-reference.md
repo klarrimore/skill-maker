@@ -266,7 +266,7 @@ A skill that passes import mode but fails strict mode must be explicitly convert
 be packaged: copy the skill, resolve warnings, and pass strict validation. Import-mode validity
 never authorizes packaging or installation.
 
-## Security posture
+## Validation and distribution tooling
 
 - Reference validator: `skills-ref validate ./your-skill`. This is the standard's demonstration
   and reference library, not a production SDK, and code contributions to it are currently
