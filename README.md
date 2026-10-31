@@ -202,7 +202,8 @@ skill resources.
 
 The `skill_eval` subcommands exit `0` on success, `1` when an audit, case, or trigger
 query fails, and `2` on configuration errors such as an invalid flag combination or
-incomplete grading records. Each prints a JSON result on stdout. See
+incomplete grading records. Results and configuration errors are printed as JSON on
+stdout; argument-parsing errors print plain usage text. See
 [`evaluation.md`](skills/skill-maker/references/evaluation.md#commands-and-exit-codes)
 for the full contract.
 
