@@ -82,7 +82,7 @@ artifact paths are explicit failures, never fabricated successes.
 
 For a trigger request, return a boolean `triggered`. The evaluator runs every query at least
 three times and passes it when the trigger rate is at least 0.5. Revise requests contain only
-train failure evidence and a workspace-owned candidate destination. Held-out prompts, labels,
+train failure evidence and a candidate destination inside the workspace. Held-out prompts, labels,
 results, and scores are not sent to `revise`.
 
 ## Workspace and evidence
@@ -117,7 +117,7 @@ editing it.
    case and repetition number. The baseline can be no skill or a snapshot of the old skill.
 4. Grade deterministic expectations from output artifacts and final/transcript text. Send only
    judge expectations to a judge operation.
-5. Present the paired outputs to the human before critiquing or changing the skill.
+5. Show the paired outputs to the human (core loop step 5 in `SKILL.md`).
 
 `benchmark` consumes completed `grading.json` records only. It refuses missing configuration
 pairs, mixed protocol versions, and partial repetitions. It reports pass-rate, duration, and
